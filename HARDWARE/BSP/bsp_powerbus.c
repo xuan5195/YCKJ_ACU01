@@ -1,0 +1,568 @@
+#include "bsp_powerbus.h"
+#include "bsp_uart_fifo.h"
+#include "bsp_crc8.h"
+#include "bsp_useadd.h"
+
+#include "delay.h"
+#include "sys.h"
+#include "string.h"
+#include "usmart.h"	
+#include "includes.h"
+#include "led.h"
+
+#include "bsp_can.h"
+#include "bsp_canapp.h"
+
+uint8_t Overflow_Flag;	//等待超时标志
+extern uint8_t g_RUNDate[32][17];    //运行数据；
+extern uint8_t PBus_Count;
+extern uint8_t PBusDat[16];
+extern uint8_t g_LockFlag;
+extern uint8_t KJ_Versions[32];				//卡机版本号
+
+//未注册广播 
+void UnregisteredBroadcast(void)
+{
+	uint8_t Runningbuf[4]={0xF3,0x04,0xA1,0x00};
+	Runningbuf[3] = CRC8_Table(Runningbuf,Runningbuf[1]-1);	//CRC校验位
+	comSendBuf(COM2, (uint8_t *)Runningbuf, Runningbuf[1]);
+    OSTimeDlyHMSM(0, 0, 0, 150);
+}
+
+//读取未注册物理地址 
+uint8_t ReadUnregistered(uint8_t *_uBuff)
+{
+	Overflow_Flag = 10;
+	while( ( (PBus_Count&0x80)!=0x80 ) && (Overflow_Flag>1) ) //等待数据回复；
+	{
+		OSTimeDlyHMSM(0, 0, 0, 100);
+		Overflow_Flag--;
+		ReceivePowerBUSDat(0x01);	//带核验模式
+	}
+	if( PBus_Count>0x80 )	//表示接收到数据
+	{
+		PBus_Count = 0x00;
+		_uBuff[0] = PBusDat[3];	//卡机物理地址1；
+		_uBuff[1] = PBusDat[4];	//卡机物理地址2；
+		_uBuff[2] = PBusDat[5];	//卡机物理地址3；
+		_uBuff[3] = PBusDat[6];	//卡机物理地址4；
+		return 0x01;
+	}
+	else	return 0x00;	//数据接收错误  a.超时；b.数据错
+}
+
+//水费广播
+void SendBroadcast_Com(uint8_t _WaterCost,uint8_t _CostNum)
+{
+	uint8_t Runningbuf[6]={0xF3,0x06,0x10,0x05,0x1B,0x00};
+	Runningbuf[3] = _WaterCost;	//WaterCost=水费 最小扣款金额 0.005元
+	Runningbuf[4] = _CostNum;	//流量计脉冲数 每升水计量周期
+	printf(">>>>>>>>>广播 水费=%d; 脉冲数=%d\r\n",Runningbuf[3],Runningbuf[4]);
+	Runningbuf[Runningbuf[1]-1] = CRC8_Table(Runningbuf,Runningbuf[1]-1);	//CRC校验位
+	comSendBuf(COM2, (uint8_t *)Runningbuf, Runningbuf[1]);
+}
+//广播 RFID
+void SendBroadcast_Key(uint8_t *_uBuff)
+{
+	uint8_t Runningbuf[11]={0xF3,0x0B,0xCD,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0x01,0x00};
+	Runningbuf[3] = *(_uBuff+0);	//Key1
+	Runningbuf[4] = *(_uBuff+1);	//
+	Runningbuf[5] = *(_uBuff+2);	//
+	Runningbuf[6] = *(_uBuff+3);	//
+	Runningbuf[7] = *(_uBuff+4);	//
+	Runningbuf[8] = *(_uBuff+5);	//
+	Runningbuf[9] = *(_uBuff+6);	//块
+	printf(">>>>>>>>>广播 RFID_Key %2X%2X%2X%2X%2X%2X,块地址：%d\r\n",Runningbuf[3],Runningbuf[4],Runningbuf[5],Runningbuf[6],Runningbuf[7],Runningbuf[8],Runningbuf[9]);
+	Runningbuf[Runningbuf[1]-1] = CRC8_Table(Runningbuf,Runningbuf[1]-1);	//CRC校验位
+	comSendBuf(COM2, (uint8_t *)Runningbuf, Runningbuf[1]);
+}
+//查询是否有数据
+uint8_t SendPBus_Com(uint8_t _uDat,uint8_t *_uBuff)
+{
+    uint8_t ReTemp=0;
+	uint8_t Runningbuf[5]={0xF3,0x05,0x01,0x00,0x00};
+	Runningbuf[3] = _uDat;	//形参  逻辑地址
+	Runningbuf[4] = CRC8_Table(Runningbuf,Runningbuf[1]-1);	//CRC校验位
+	PBus_Count = 0x00;
+	comSendBuf(COM2, (uint8_t *)Runningbuf, Runningbuf[1]);	//发送轮循取数据命令
+	Overflow_Flag = 25;
+    printf("轮循命令 %d ",Overflow_Flag);
+	while( ( (PBus_Count&0x80)!=0x80 ) && (Overflow_Flag>0) ) //等待数据回复；
+	{
+		OSTimeDlyHMSM(0, 0, 0, 8);
+		Overflow_Flag--;
+		ReceivePowerBUSDat(0x01);	//带核验模式
+	}
+    printf("- %d;  ",Overflow_Flag);
+	if( ( (PBus_Count&0x80) == 0x80 ))
+	{
+		PBus_Count = 0x00;
+		if( PBusDat[3] == _uDat )
+		{
+			if( PBusDat[2] == 0x02 )		ReTemp = 0x02;	//无数据
+			else//有数据
+            {
+                _uBuff[0] = PBusDat[2];	//05表示插卡；06表示拔卡；
+                _uBuff[1] = PBusDat[4];	//卡号1；
+                _uBuff[2] = PBusDat[5];	//卡号2；
+                _uBuff[3] = PBusDat[6];	//卡号3；
+                _uBuff[4] = PBusDat[7];	//卡号4；
+                _uBuff[5] = PBusDat[8];	//金额1；
+                _uBuff[6] = PBusDat[9];	//金额2；
+                _uBuff[7] = PBusDat[10];//金额3；
+                _uBuff[8] = PBusDat[11];//卡校验；
+                _uBuff[9] = PBusDat[12];//通信码；
+                ReTemp = 0xAA;		//数据正确 
+            }
+			printf("%02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X\r\n",PBusDat[0],PBusDat[1],PBusDat[2],PBusDat[3],PBusDat[4],PBusDat[5],PBusDat[6],PBusDat[7],PBusDat[8],PBusDat[9],PBusDat[10],PBusDat[11]);
+		}
+		else	ReTemp = 0x00;	//数据接收错误  a.超时；b.数据错
+	}
+	else		ReTemp = 0x00;	//数据接收错误  a.超时；b.数据错
+	return ReTemp;
+}
+
+//发送云端数据
+uint8_t SendPBus_Dat(uint8_t _uDat,uint8_t *_uBuff)
+{
+    uint8_t ReTemp=0;
+	uint8_t Runningbuf[14]={0xF3,0x0E,0x08,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+	Runningbuf[3] = _uDat;	//形参  逻辑地址
+	Runningbuf[4] = _uBuff[0];	//卡SN 1
+	Runningbuf[5] = _uBuff[1];	//卡SN 2
+	Runningbuf[6] = _uBuff[2];	//卡SN 3
+	Runningbuf[7] = _uBuff[3];	//卡SN 4
+	Runningbuf[8] = _uBuff[4];	//卡内金额1 高位
+	Runningbuf[9] = _uBuff[5];	//卡内金额2 高位
+	Runningbuf[10] = _uBuff[6];	//卡内金额3 高位
+	Runningbuf[11] = _uBuff[7];	//卡内校验数据
+	Runningbuf[12] = _uBuff[8];	//通信码
+	Runningbuf[Runningbuf[1]-1] = CRC8_Table(Runningbuf,Runningbuf[1]-1);	//CRC校验位
+	PBus_Count = 0x00;
+	comSendBuf(COM2, (uint8_t *)Runningbuf, Runningbuf[1]);
+	Overflow_Flag = 40;
+    printf("Over_F = %d",Overflow_Flag);
+	while( ( (PBus_Count&0x80)!=0x80 ) && (Overflow_Flag>0) ) //等待数据回复；
+	{
+		OSTimeDlyHMSM(0, 0, 0, 10);
+		Overflow_Flag--;
+		ReceivePowerBUSDat(0x01);	//带核验模式
+	}
+    printf("- %d;\r\n",Overflow_Flag);
+	if( ( (PBus_Count&0x80) == 0x80 ))
+	{
+		PBus_Count = 0x00;
+		if( PBusDat[3] == _uDat )
+		{
+			if( PBusDat[2] == 0x09 )	ReTemp = 0xAA;	//写入正确
+			else                		ReTemp = 0x00;	//失败
+		}
+		else	ReTemp = 0x00;	//失败
+	}
+	else		ReTemp = 0x00;	//失败
+	return ReTemp;
+}
+
+//发送卡异常代码数据
+uint8_t SendPBus_Dat2(uint8_t _uDat,uint8_t *_uBuff)
+{
+    uint8_t ReTemp=0;
+	uint8_t Runningbuf[14]={0xF3,0x0A,0x13,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+	Runningbuf[3] = _uDat;	//形参  逻辑地址
+	Runningbuf[4] = _uBuff[0];	//错误代码
+	Runningbuf[5] = _uBuff[1];	//错误代码
+	Runningbuf[6] = _uBuff[2];	//错误代码
+	Runningbuf[7] = _uBuff[3];	//错误代码
+	Runningbuf[8] = _uBuff[4];	//通信码
+	Runningbuf[Runningbuf[1]-1] = CRC8_Table(Runningbuf,Runningbuf[1]-1);	//CRC校验位
+	PBus_Count = 0x00;
+	comSendBuf(COM2, (uint8_t *)Runningbuf, Runningbuf[1]);
+	Overflow_Flag = 40;
+    printf("异常 = %d ",Overflow_Flag);
+	while( ( (PBus_Count&0x80)!=0x80 ) && (Overflow_Flag>0) ) //等待数据回复；
+	{
+		OSTimeDlyHMSM(0, 0, 0, 10);
+		Overflow_Flag--;
+		ReceivePowerBUSDat(0x01);	//带核验模式
+	}
+    printf("- %d; ",Overflow_Flag);
+	if( ( (PBus_Count&0x80) == 0x80 ))
+	{
+		PBus_Count = 0x00;
+		if( PBusDat[3] == _uDat )
+		{
+			if( PBusDat[2] == 0x14 )	{ReTemp = 0xAA;printf("success \r\n");}	//写入正确
+			else                		{ReTemp = 0x00;printf("fault   \r\n");}	//失败
+		}
+		else	{ReTemp = 0x00;printf("fault   \r\n");}	//失败
+	}
+	else		{ReTemp = 0x00;printf("fault   \r\n");}	//失败
+	return ReTemp;
+}
+
+//发送异常数据
+uint8_t SendPBus_ErrCom(uint8_t *_uBuff)
+{
+    uint8_t ReTemp=0;
+	uint8_t Runningbuf[10]={0xF3,0x09,0x00,0x00,0x45,0x30,0x30,0x30,0x00,0x00};
+	Runningbuf[2] = _uBuff[0];	//形参  命令帧
+	Runningbuf[3] = _uBuff[1];	//形参  逻辑地址
+	Runningbuf[5] = _uBuff[2];	//异常代码高位
+	Runningbuf[6] = _uBuff[3];	//异常代码	
+	Runningbuf[7] = _uBuff[4];	//异常代码低位
+	Runningbuf[8] = _uBuff[5];	//通信码	
+	if(Runningbuf[2]==0x11)			Runningbuf[1] = 0x09;//心跳包
+	else if(Runningbuf[2]==0x13)	Runningbuf[1] = 0x0A;//插卡取卡
+	Runningbuf[Runningbuf[1]-1] = CRC8_Table(Runningbuf,Runningbuf[1]-1);	//CRC校验位
+	PBus_Count = 0x00;
+	comSendBuf(COM2, (uint8_t *)Runningbuf, Runningbuf[1]);
+	Overflow_Flag = 40;
+    printf("ErrCom %d ",Overflow_Flag);
+	while( ( (PBus_Count&0x80)!=0x80 ) && (Overflow_Flag>0) ) //等待数据回复；
+	{
+		OSTimeDlyHMSM(0, 0, 0, 10);
+		Overflow_Flag--;
+		ReceivePowerBUSDat(0x01);	//带核验模式
+	}
+    printf("- %d;",Overflow_Flag);
+	if( ( (PBus_Count&0x80) == 0x80 ))
+	{
+		PBus_Count = 0x00;
+		if( PBusDat[3] == _uBuff[1] )	ReTemp = 0xAA;		//数据正确 
+		else							ReTemp = 0x00;	//数据接收错误  a.超时；b.数据错
+	}
+	else		ReTemp = 0x00;	//数据接收错误  a.超时；b.数据错
+	return ReTemp;
+}
+
+//折半查找法 命令
+//_uDat：模式
+//_uDat=0xB1	大于
+//_uDat=0xB2	小等于
+//*_uBuff:物理地址 折半查找地址
+uint8_t SendPBus_SearchDat(uint8_t _uDat,uint8_t *_uBuff)
+{
+    uint8_t u8Temp=0,ReTemp=0;
+	uint8_t Runningbuf[8]={0xF3,0x08,0x00,0x00,0x00,0x00,0x00,0x00};
+	uint8_t uCADDDat[4]={0x00,0x00,0x00,0x00};
+	Runningbuf[2] = _uDat;		//形参  模式 大于/小等于
+	Runningbuf[4] = _uBuff[0];	//SN1
+	Runningbuf[5] = _uBuff[1];	//SN2
+	Runningbuf[6] = _uBuff[2];	//SN3
+	Runningbuf[7] = _uBuff[3];	//SN4
+	Runningbuf[Runningbuf[1]-1] = CRC8_Table(Runningbuf,Runningbuf[1]-1);	//CRC校验位
+	PBus_Count = 0x00;
+	comSendBuf(COM2, (uint8_t *)Runningbuf, Runningbuf[1]);
+	Overflow_Flag = 2;
+    printf("折半查找%2X  %d ",_uDat,Overflow_Flag);
+	while( ( (PBus_Count&0x80)!=0x80 ) && (Overflow_Flag>0) ) //等待数据回复；
+	{
+		OSTimeDlyHMSM(0, 0, 0, 300);
+		Overflow_Flag--;
+		ReceivePowerBUSDat(0x00);	//不带校验模式
+	}
+    printf("- %d; ",Overflow_Flag);
+	if( ( (PBus_Count&0x80) == 0x80 ))
+	{
+		PBus_Count = 0x00;
+		if(CRC8_Table(PBusDat,0x07)==PBusDat[0x07])	//CRC校验通过
+		{
+			if( PBusDat[2] == 0xB3 )
+			{
+				printf("\r\n接收到从站完成数据  物理地址：0x%02x 0x%02x 0x%02x 0x%02x  ;",PBusDat[3],PBusDat[4],PBusDat[5],PBusDat[6]);   
+				uCADDDat[0]=PBusDat[3];	uCADDDat[1]=PBusDat[4];	uCADDDat[2]=PBusDat[5];	uCADDDat[3]=PBusDat[6];
+				u8Temp = Distribute_LogicADD((uint8_t *)uCADDDat);	//分配逻辑地址
+				printf("分配成功！ 逻辑地址:%d;\r\n",u8Temp);  
+				if(u8Temp<=32)
+				{
+					KJ_Versions[u8Temp] = WriteLogitADD(u8Temp,(uint8_t *)uCADDDat);
+					if(KJ_Versions[u8Temp] != 0x00)	//分别逻辑地址成功
+					g_RUNDate[0][0]++; g_RUNDate[u8Temp][0] = 0xAA; //总数+1；该地址使用；
+					g_RUNDate[u8Temp][3] = uCADDDat[0]; g_RUNDate[u8Temp][4] = uCADDDat[1];//卡机SN
+					g_RUNDate[u8Temp][5] = uCADDDat[2]; g_RUNDate[u8Temp][6] = uCADDDat[3];
+				}
+				ReTemp = 0x00;	printf("success \r\n");
+			}
+			else{ReTemp = 0x01;	printf("fault   \r\n");}//CRC校验失败 有二组以上数据	
+		}
+		else	{ReTemp = 0x02;	printf("fault   \r\n");}//CRC校验失败 有二组以上数据
+	}
+	else		{ReTemp = 0x03;	printf("fault   \r\n");}	//失败
+	return ReTemp;
+}
+/*
+//点名取数据
+//_uDat:逻辑地址
+//_uBuff：卡号、金额\卡校验；
+uint8_t ReadPBus_Com(uint8_t _uDat,uint8_t *_uBuff)
+{
+    uint8_t ReTemp=0;
+	uint8_t Runningbuf[5]={0xF3,0x05,0x04,0x00,0x00};
+	Runningbuf[3] = _uDat;	//形参  逻辑地址
+	Runningbuf[4] = CRC8_Table(Runningbuf,Runningbuf[1]-1);	//CRC校验位
+	PBus_Count = 0x00;
+	comSendBuf(COM2, (uint8_t *)Runningbuf, Runningbuf[1]);	//发送取数据命令
+	Overflow_Flag = 2;
+	while( ( (PBus_Count&0x80)!=0x80 ) && (Overflow_Flag>0) ) //等待数据回复；
+	{
+		OSTimeDlyHMSM(0, 0, 0, 180);
+		Overflow_Flag--;
+		ReceivePowerBUSDat(0x01);	//带核验模式
+	}
+	if( ( (PBus_Count&0x80) == 0x80 ))
+	{
+		PBus_Count = 0x00;
+		_uBuff[0] = PBusDat[2];	//05表示插卡；06表示拔卡；
+		_uBuff[1] = PBusDat[4];	//卡号1；
+		_uBuff[2] = PBusDat[5];	//卡号2；
+		_uBuff[3] = PBusDat[6];	//卡号3；
+		_uBuff[4] = PBusDat[7];	//卡号4；
+		_uBuff[5] = PBusDat[8];	//金额1；
+		_uBuff[6] = PBusDat[9];	//金额2；
+		_uBuff[7] = PBusDat[10];//卡校验；
+		ReTemp = 0xAA;		//数据正确 
+	}
+	else	ReTemp = 0x00;	//数据接收错误  a.超时；b.数据错
+	return 	ReTemp;
+}
+*/
+//取回成功回复
+//_uDat:逻辑地址
+void ReadPBus_Succeed(uint8_t _uDat)
+{
+	uint8_t Runningbuf[5]={0xF3,0x05,0x07,0x00,0x00};
+	Runningbuf[3] = _uDat;	//形参  逻辑地址
+	Runningbuf[4] = CRC8_Table(Runningbuf,Runningbuf[1]-1);	//CRC校验位
+	comSendBuf(COM2, (uint8_t *)Runningbuf, Runningbuf[1]);	//发送数据
+    OSTimeDlyHMSM(0, 0, 0, 250);
+}
+
+//轮循方式取通信数据
+//_no:逻辑地址
+void ReadRunningData(uint8_t _no)
+{	
+	//1.判断该逻辑地址是否有使用；
+	//			未使用	-->返回；
+	//			使用	-->查询等待回复;
+	//							-->无数据	-->返回；
+	//							-->有数据	-->发送取数据将卡机数据取回
+	//											并回复取回成功
+	uint8_t uDat=0,TempBuff[10];
+	uint8_t uBuff[8];
+    printf("%2d; ",_no); 
+	if(g_RUNDate[_no][0] == 0xAA)	//正常数据
+	{	//该逻辑地址使用
+		if((g_RUNDate[_no][3] == 0x0)&&(g_RUNDate[_no][6] == 0x0))	{g_RUNDate[_no][0] = 0x0;}
+		LED1 = !LED1;//LED1 = 0;
+		uDat = Can_SendPBus_Com(_no,(uint8_t *)TempBuff);		//发送轮循取数据命令
+		if( uDat == 0x00 )		uDat = Can_SendPBus_Com(_no,(uint8_t *)TempBuff);
+		{
+			printf("uDat = %2d; ",uDat); 
+			if( uDat == 0x02 )		//无数据	
+			{
+				g_RUNDate[_no][1] = 0xDD;
+				g_RUNDate[_no][2] = 0x00;
+			}
+			else if( uDat == 0x00 )	//失联
+			{
+				g_RUNDate[_no][1] = 0x00;			
+				if(g_RUNDate[_no][2]<20)//超过一定次数，将卡机删除
+				{	
+					if(g_RUNDate[_no][2]%5==0)	LogitADDWrite(_no);	//重新检测注册
+					g_RUNDate[_no][2]++;	
+				}
+				else 
+				{	
+					//for(i=0;i<16;i++)	g_RUNDate[_no][i] = 0;	
+					//Delete_LogicADD(_no);	//分配不成功，清掉这逻辑地址
+				}
+			}	
+			else//有数据
+			{
+				g_RUNDate[_no][2] = 0x00;
+				g_RUNDate[_no][1] = 0xAA;	//有数据
+				g_RUNDate[_no][2] = TempBuff[0];	//卡状态 05表示插卡；06表示拔卡；
+				g_RUNDate[_no][7] = TempBuff[1];	//卡号1；
+				g_RUNDate[_no][8] = TempBuff[2];	//卡号2；
+				g_RUNDate[_no][9] = TempBuff[3];	//卡号3；
+				g_RUNDate[_no][10] = TempBuff[4];	//卡号4；
+				g_RUNDate[_no][11] = TempBuff[5];	//金额1；
+				g_RUNDate[_no][12] = TempBuff[6];	//金额2；
+				g_RUNDate[_no][13] = TempBuff[7];	//金额3；
+				g_RUNDate[_no][14] = TempBuff[8];	//卡校验；
+				g_RUNDate[_no][15] = TempBuff[9];	//通信码；
+				printf("逻辑地址：%d;卡状态%d;  ",_no,g_RUNDate[_no][2]);
+				printf("卡号：%02X%02X%02X%02X;  ",g_RUNDate[_no][7],g_RUNDate[_no][8],g_RUNDate[_no][9],g_RUNDate[_no][10]);
+				printf("金额：%6d;   ", (g_RUNDate[_no][11]<<16)|(g_RUNDate[_no][12]<<8)|g_RUNDate[_no][13]);
+				printf("卡校验：%2d;   通信码：%02X; \r\n", g_RUNDate[_no][14],g_RUNDate[_no][15]);
+				//ReadPBus_Succeed(_no);//回复取回成功
+				uBuff[0] = _no;	//逻辑地址
+				uBuff[1] = TempBuff[1];	//卡号1；
+				uBuff[2] = TempBuff[2];	//卡号2；
+				uBuff[3] = TempBuff[3];	//卡号3；
+				uBuff[4] = TempBuff[4];	//卡号4；
+				if(g_RUNDate[_no][2]==0x05)		uBuff[5] = 0xAA;	//卡状态 05表示插卡
+				else if(g_RUNDate[_no][2]==0x06)uBuff[5] = 0x55;	//卡状态 06表示拔卡
+				OSTimeDlyHMSM(0, 0, 0, 5);
+				printf("%02X %02X %02X %02X %02X %02X %02X %02X\r\n",uBuff[0],uBuff[1],uBuff[2],uBuff[3],uBuff[4],uBuff[5],uBuff[6],uBuff[7]);
+				Can_ReadPBus_Succeed((uint8_t *)uBuff);//回复取回成功
+				//OSTimeDlyHMSM(0, 0, 0, 50);
+			}
+		}
+	}
+	else if(g_RUNDate[_no][0] == 0x55)	//异常
+	{
+		LED1 = !LED1;//LED1 = 0;
+		TempBuff[0] = _no;	//逻辑地址
+		TempBuff[1] = g_RUNDate[_no][7];	//异常代码"E"
+		TempBuff[2] = g_RUNDate[_no][8];	//异常代码高位
+		TempBuff[3] = g_RUNDate[_no][9];	//异常代码
+		TempBuff[4] = g_RUNDate[_no][10];	//异常代码低位
+		TempBuff[5] = g_RUNDate[_no][15];	//通信码
+		Can_SendPBus_ErrCom((uint8_t *)TempBuff);
+		//uDat = SendPBus_ErrCom((uint8_t *)TempBuff);
+		//if( uDat == 0x00 )		uDat = SendPBus_ErrCom((uint8_t *)TempBuff);
+	}
+}
+
+//轮循方式取通信数据
+//_no:逻辑地址
+void WriteRFIDData(uint8_t *_WriteDat)
+{	
+	uint8_t TempBuff[10]={0x00};
+	uint8_t Runningbuf[8]={0x00},Recebuf[8]={0};
+	uint8_t _no=0,res=0,Overflow_Flag=10;
+    LED1 = !LED1;//LED1 = 0;
+	_no	= _WriteDat[9];	//逻辑地址
+	printf("\r\n服务器 %2d; ",_no); 
+	if(_WriteDat[0] == 0xAA)	//正常数据
+	{
+		TempBuff[0] = _WriteDat[1];	//卡SN 1
+		TempBuff[1] = _WriteDat[2];	//卡SN 2
+		TempBuff[2] = _WriteDat[3];	//卡SN 3
+		TempBuff[3] = _WriteDat[4];	//卡SN 4
+		TempBuff[4] = _WriteDat[10];//通信码
+		TempBuff[5] = _WriteDat[6];	//卡内金额1 高位
+		TempBuff[6] = _WriteDat[7];	//卡内金额2 高位
+		TempBuff[7] = _WriteDat[8];	//卡内金额3 高位
+		TempBuff[8] = _WriteDat[5];	//卡内校验数据
+		TempBuff[9] = _WriteDat[10];	//通信码
+		
+		///////发送数据包1
+		Runningbuf[0] = _WriteDat[9];	//逻辑地址
+		Runningbuf[1] = TempBuff[0];
+		Runningbuf[2] = TempBuff[1];
+		Runningbuf[3] = TempBuff[2];
+		Runningbuf[4] = TempBuff[3];
+		Runningbuf[5] = TempBuff[4];
+		printf("%02X %02X %02X %02X %02X %02X %02X %02X\r\n",Runningbuf[0],Runningbuf[1],\
+		Runningbuf[2],Runningbuf[3],Runningbuf[4],Runningbuf[5],Runningbuf[6],Runningbuf[7]);
+		Package_Send(0x08,(u8 *)Runningbuf);
+		OSTimeDlyHMSM(0,0,0,100);  //延时
+		
+		///////发送数据包2
+		Runningbuf[0] = _WriteDat[9];	//逻辑地址
+		Runningbuf[1] = TempBuff[5];
+		Runningbuf[2] = TempBuff[6];
+		Runningbuf[3] = TempBuff[7];
+		Runningbuf[4] = TempBuff[8];
+		Runningbuf[5] = TempBuff[9];
+		Runningbuf[6] = CRC8_Table(TempBuff,10);	//CRC
+		printf("%02X %02X %02X %02X %02X %02X %02X %02X\r\n",Runningbuf[0],Runningbuf[1],\
+		Runningbuf[2],Runningbuf[3],Runningbuf[4],Runningbuf[5],Runningbuf[6],Runningbuf[7]);
+		Package_Send(0x09,(u8 *)Runningbuf);
+	}
+	else if(_WriteDat[0] == 0xBB)	//异常数据
+	{
+		Runningbuf[0] = _no;	//逻辑地址
+		Runningbuf[1] = _WriteDat[2];	//错误代码"E"
+		Runningbuf[2] = _WriteDat[3];	//错误代码高位
+		Runningbuf[3] = _WriteDat[4];	//错误代码中位
+		Runningbuf[4] = _WriteDat[5];	//错误代码低位
+		Runningbuf[5] = _WriteDat[6];	//通信码
+		Package_Send(0x11,(u8 *)Runningbuf);
+	}
+	
+	Overflow_Flag=10;
+	while((res==0)&& (Overflow_Flag>0) )//接收到有数据
+	{
+		res=Can_Receive_Msg(Recebuf);
+		OSTimeDlyHMSM(0, 0, 0, 5);
+		Overflow_Flag--;
+	}
+	if(res)
+	{
+		printf("%02X %02X %02X %02X %02X %02X %02X %02X\r\n",Recebuf[0],Recebuf[1],\
+		Recebuf[2],Recebuf[3],Recebuf[4],Recebuf[5],Recebuf[6],Recebuf[7]);
+	}
+}
+
+
+//写入逻辑地址
+//_LogitADD：逻辑地址
+uint8_t WriteLogitADD(uint8_t _LogitADD,uint8_t *_PhysicalADD)
+{
+    uint8_t ReTemp=0;
+	uint8_t Runningbuf[9]={0xF3,0x09,0xC1,0x00,0x00,0x00,0x00,0x00,0x00};
+	Runningbuf[3] = *(_PhysicalADD+0);	//物理地址1
+	Runningbuf[4] = *(_PhysicalADD+1);	//物理地址2
+	Runningbuf[5] = *(_PhysicalADD+2);	//物理地址3
+	Runningbuf[6] = *(_PhysicalADD+3);	//物理地址4
+	Runningbuf[7] = _LogitADD;			//逻辑地址
+	Runningbuf[Runningbuf[1]-1] = CRC8_Table(Runningbuf,Runningbuf[1]-1);	//CRC校验位
+	PBus_Count = 0x00;
+	comSendBuf(COM2, (uint8_t *)Runningbuf, Runningbuf[1]);	//发送取数据命令
+	Overflow_Flag = 30;
+    printf("Over_Flag = %d",Overflow_Flag);  
+	while( ( (PBus_Count&0x80)!=0x80 ) && (Overflow_Flag>0) ) //等待数据回复；
+	{
+		OSTimeDlyHMSM(0, 0, 0, 10);
+		Overflow_Flag--;
+		ReceivePowerBUSDat(0x01);	//带核验模式
+	}
+    printf("- %d;",Overflow_Flag);  
+	if( ( (PBus_Count&0x80) == 0x80 ) &&(PBusDat[2] == 0xC2) )
+	{
+		PBus_Count = 0x00;
+		g_RUNDate[_LogitADD][0] = 0xAA;
+		ReTemp = PBusDat[8];		//数据正确 
+	}
+	else	ReTemp = 0x00;	//数据接收错误  a.超时；b.数据错
+	return 	ReTemp;
+}
+//折半查找法 每次只查找一个；
+//_Dat:查找标记
+uint8_t Binary_searchSN(void)
+{	
+	uint8_t uDat=0;
+	uint8_t ucADDDat[4]={0x16,0x01,0x01,0x01};
+	LED1 = 0;
+	uDat = SendPBus_SearchDat(0xB1,(uint8_t *)ucADDDat);
+	LED1 = 1;
+	return uDat;
+}
+
+void PrintfDat(void)
+{
+	uint8_t i,j;
+	printf("\r\n");
+	for(i=0;i<26;i++)
+	{
+		printf("%02d--",i);
+		for(j=0;j<16;j++)	printf("%02X,",g_RUNDate[i][j]);
+		printf("\r\n");
+	}
+}
+//void PrintfDat2(void)
+//{
+//	uint8_t i,j;
+//	printf("\r\n");
+//	for(i=0;i<30;i++)
+//	{
+//		printf("%02d--",i);
+//		//for(j=0;j<16;j++)	printf("%02X,",g_SendDate[i][j]);
+//		printf("\r\n");
+//	}
+//}
+
+

@@ -1,0 +1,268 @@
+{
+	"auto_complete":
+	{
+		"selected_items":
+		[
+			[
+				"v",
+				"valueLED_R"
+			],
+			[
+				"cur",
+				"currentDataPoint"
+			]
+		]
+	},
+	"buffers":
+	[
+		{
+			"contents": "#include \"led.h\"\n#include \"delay.h\"\n#include \"key.h\"\n#include \"sys.h\"\n#include \"wdg.h\"\n#include \"bsp_24cxx.h\"\n#include \"bsp_myiic.h\"\n#include \"bsp_powerbus.h\"\n#include \"bsp_uart_fifo.h\"\n#include \"bsp_crc8.h\"\n#include \"timer.h\"\n#include \"sram.h\"\n#include \"malloc.h\"\n#include \"string.h\"\n#include \"usmart.h\"\t\n#include \"dm9000.h\"\n#include \"lwip/netif.h\"\n#include \"lwip_comm.h\"\n#include \"lwipopts.h\"\n#include \"includes.h\"\n#include \"tcp_client_demo.h\"\n#include \"bsp_useadd.h\"\n#include \"bsp_serialport.h\"\n\nextern uint8_t g_RUNDate[32][17];    \t//运行数据；\nextern uint8_t g_SendDate[26][16];    \t//发送数据缓存\nuint8_t KJ_Versions[26]={0};\t\t\t//卡机版本号缓存\nuint8_t g_PowerUpFlag=0;\t\t\t\t//上电标志，0xAA上电完成\nuint8_t g_lwipADD[4]={0};\t\t\t\t//远端IP地址\nuint16_t g_lwipPort=0;\t\t\t\t\t//远端端口号\nuint8_t g_ACUAdd[16]={0};\t\t\t\t//通信码16位\nuint8_t g_ACUSN[4]={0};\t\t\t\t\t//区域控制器SN 4位\nuint8_t g_SerialDat[32]={0};\t\t\t//串口通信数据\nuint8_t g_Serial_Count=0;\t\t\t\t//串口接收计数\nuint8_t g_CostNum = 29;\t\t\t\t\t//流量计脉冲数 每升水计量周期\nuint8_t g_WaterCost = 5;\t\t\t\t//WaterCost=水费 最小扣款金额 0.005元\nuint8_t FM1702KeyCRC;\t\t\t\t\t//FM1702KeyCRC\nuint8_t FM1702_Key[7];\t\t\t\t\t//FM1702_Key[0]-[5]为Key;FM1702_Key[6]为块地址；\n\n//uint8_t g_SetIPFlag=0x00;\t//0xAA:使用静态IP地址\nuint8_t g_Setip[5];       \t//本机IP地址 g_Setip[0] 为使用标志\nuint8_t g_Setnetmask[4]; \t//子网掩码\nuint8_t g_Setgateway[4]; \t//默认网关的IP地址\nuint8_t g_NewAddFlag=0x00; \t//新增标志\n\n//KEY任务\n#define KEY_TASK_PRIO \t\t9\t\t//任务优先级\n#define KEY_STK_SIZE\t\t512\t\t//任务堆栈大小\nOS_STK KEY_TASK_STK[KEY_STK_SIZE];\t//任务堆栈\nvoid key_task(void *pdata);  \t\t//任务函数\n \n\n//LED任务\n#define LED_TASK_PRIO\t\t10\t\t//任务优先级\n#define LED_STK_SIZE\t\t512\t\t//任务堆栈大小\nOS_STK\tLED_TASK_STK[LED_STK_SIZE];\t//任务堆栈\nvoid led_task(void *pdata); \t\t//任务函数\n \n\n//START任务\n#define START_TASK_PRIO\t\t12\t\t\t//任务优先级\n#define START_STK_SIZE\t\t128\t\t\t//任务堆栈大小\nOS_STK START_TASK_STK[START_STK_SIZE];\t//任务堆栈\nvoid start_task(void *pdata);\t\t\t//任务函数 \n\n\n int main(void)\n {\t \n\tdelay_init();\t    \t//延时函数初始化\t  \n\tNVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);\n\tbsp_InitUart(); \t/* 初始化串口 */\n \tLED_Init();\t\t\t    //LED端口初始化\n \tusmart_dev.init(72);\t//初始化USMART\t\t \n \t//FSMC_SRAM_Init();\t\t//初始化外部SRAM\n\tmy_mem_init(SRAMIN);\t//初始化内部内存池\n\t//my_mem_init(SRAMEX);\t//初始化外部内存池\n    printf(\"Starting Up YCKJ-ACU...\\r\\n\");\n\tAT24CXX_Init();\t\t\t    \t//IIC 初始化\n\twhile(AT24CXX_Check()){};      \t//对IIC进行检测\n    printf(\"AT24CXX_Check OK!\\r\\n\");\n\tdelay_ms(500); \n\tOSInit();\t\t\t\t//UCOS初始化\n\twhile(lwip_comm_init()) //lwip初始化\n\t{\n        printf(\"Lwip Init failed!\\r\\n\");\n\t\tdelay_ms(500);\t\tdelay_ms(500);\n\t}\n    printf(\"Lwip Init Success!\\r\\n\");   //lwip初始化成功\n\twhile(tcp_client_init()) \t\t\t//初始化tcp_client(创建tcp_client线程)\n\t{\n        printf(\"TCP Client failed!!\\r\\n\");   //lwip初始化成功\n\t\tdelay_ms(500);\t\tdelay_ms(500);\n\t}\n    delay_ms(500);\n    printf(\"TCP Client Success!\\r\\n\");   //TCP创建成功\n\tOSTaskCreate(start_task,(void*)0,(OS_STK*)&START_TASK_STK[START_STK_SIZE-1],START_TASK_PRIO);\n\tOSStart(); //开启UCOS\n}\n \n//start任务\nvoid start_task(void *pdata)\n{\n\tOS_CPU_SR cpu_sr;\n\tpdata = pdata ;\n\t\n\tOSStatInit();  \t\t\t//初始化统计任务\n\tOS_ENTER_CRITICAL();  \t//关中断\n\tOSTaskCreate(led_task,(void*)0,(OS_STK*)&LED_TASK_STK[LED_STK_SIZE-1],LED_TASK_PRIO); \t//创建LED任务\n\tOSTaskCreate(key_task,(void*)0,(OS_STK*)&KEY_TASK_STK[KEY_STK_SIZE-1],KEY_TASK_PRIO); \t//创建KEY任务\n\tOSTaskSuspend(OS_PRIO_SELF); //挂起start_task任务\n\tOS_EXIT_CRITICAL();  //开中断\n}\n\n\n\n//key任务\nvoid key_task(void *pdata)\n{\n    uint8_t i=0,j=0,PrintfCount;\n    uint16_t Key_Task_Count=0,HeartSendCount=0;\n\tuint8_t SerialSetFlag=0x00;\t//串口设置标志，修改配置后，重启才能与服务器通信\n\twhile(1)\n\t{\n\t\tif(g_PowerUpFlag==0x00)\t//等待上电初始化完成\n\t\t{\n\t\t\tOSTimeDlyHMSM(0,0,0,50);  //延时50ms\n\t\t\tHeartSendCount=0;\n\t\t}\n\t\telse\n\t\t{\n\t\t\tif(SerialSetFlag==0x00)\t//串口设置标志，修改配置后，重启才能与服务器通信\n\t\t\t{\n\t\t\t\tif(Key_Task_Count<6000) {\tKey_Task_Count++;\t}\n\t\t\t\telse \t\t\t\t\t{\tKey_Task_Count = 0;\t} //周期为300秒;\n\t\t\t\tif(g_NewAddFlag==0xAA)\t{\tg_NewAddFlag=0x00;\tHeartSendCount=1000;}\n\t\t\t\tif(HeartSendCount<80)\t{\tHeartSendCount++;\tPrintfCount=0;} //去掉刚上电时卡机还没注册；\n\t\t\t\telse if(HeartSendCount<1800)\n\t\t\t\t{\n\t\t\t\t\tHeartSendCount++;\n\t\t\t\t\tif((Key_Task_Count%30)==0)  //测试改为    s发一次；\n\t\t\t\t\t{\n\t\t\t\t\t\ttcp_client_flag |= LWIP_SEND_HeartbeatDATA; //标记LWIP有心跳数据包要发送;\n\t\t\t\t\t\tPrintfCount++;\n\t\t\t\t\t\tprintf(\"\\r\\n 快递心跳包发送状态,发送次数%2d,计数值：%d.\",PrintfCount,HeartSendCount); \n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t\telse\n\t\t\t\t{\n\t\t\t\t\tHeartSendCount = 5000;\n\t\t\t\t\tif((Key_Task_Count%240)==1)  //10秒钟发一次；\n\t\t\t\t\t\ttcp_client_flag |= LWIP_SEND_HeartbeatDATA; //标记LWIP有心跳数据包要发送;\t\t\t\t\n\t\t\t\t}\n\t\t\t\t\n\t\t\t\tfor(i=1;i<26;i++)\n\t\t\t\t{\n\t\t\t\t\tif(g_RUNDate[i][1] == 0xAA)\t//有数据\n\t\t\t\t\t{\n\t\t\t\t\t\tj = 0;\n\t\t\t\t\t\tif(g_SendDate[j][0] == 0xAA)\t//该表被使用\n\t\t\t\t\t\t{\n\t\t\t\t\t\t\tif(j>=30)   j = 0;\n\t\t\t\t\t\t\telse        j++;\n\t\t\t\t\t\t}\n\t\t\t\t\t\telse\n\t\t\t\t\t\t{\n\t\t\t\t\t\t\tg_SendDate[j][0] = 0xAA;\t//标志为使用\n\t\t\t\t\t\t\tif(g_RUNDate[i][2] == 0x05)\t\t\tg_SendDate[j][1] = 0x11;\t//插卡\n\t\t\t\t\t\t\telse if(g_RUNDate[i][2] == 0x06)\tg_SendDate[j][1] = 0x13;\t//拔卡\n\t\t\t\t\t\t\tg_SendDate[j][2] = g_RUNDate[i][3];\t//卡机SN\n\t\t\t\t\t\t\tg_SendDate[j][3] = g_RUNDate[i][4];\t//卡机SN\n\t\t\t\t\t\t\tg_SendDate[j][4] = g_RUNDate[i][5];\t//卡机SN\n\t\t\t\t\t\t\tg_SendDate[j][5] = g_RUNDate[i][6];\t//卡机SN\n\t\t\t\t\t\t\tg_SendDate[j][6] = g_RUNDate[i][7];\t//CardSN\n\t\t\t\t\t\t\tg_SendDate[j][7] = g_RUNDate[i][8];\t//CardSN\n\t\t\t\t\t\t\tg_SendDate[j][8] = g_RUNDate[i][9];\t//CardSN\n\t\t\t\t\t\t\tg_SendDate[j][9] = g_RUNDate[i][10];//CardSN\n\t\t\t\t\t\t\tg_SendDate[j][10] = g_RUNDate[i][11];//Card金额1\n\t\t\t\t\t\t\tg_SendDate[j][11] = g_RUNDate[i][12];//Card金额2\t\n\t\t\t\t\t\t\tg_SendDate[j][12] = g_RUNDate[i][13];//Card金额3\t\t\n\t\t\t\t\t\t\tg_SendDate[j][13] = g_RUNDate[i][14];//校验\t\n\t\t\t\t\t\t\tg_SendDate[j][14] = i;//逻辑地址\t\n\t\t\t\t\t\t\tg_SendDate[j][15] = g_RUNDate[i][15];//通信码\t\n\t\t\t\t\t\t}\t\t\t\t\t\n\t\t\t\t\t\tg_RUNDate[i][1] = 0xDD;\t\t\t\t\t\n\t\t\t\t\t\ttcp_client_flag |= LWIP_SEND_DATA; \t//标记LWIP有数据要发送;\t\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t\tOSTimeDlyHMSM(0,0,0,50);  //延时50ms\t\t\n\t\t}\n\t\t//串口3检测 参数设置\n\t\tReceiveSerialDat();\n\t\tif( ( 0x80 & g_Serial_Count ) == 0x80 )\t//接收到数据\n\t\t{\n\t\t\tg_Serial_Count = 0x00;\n\t\t\tSerialSetFlag=0xAA;\n\t\t\tprintf(\"\\r\\n串口参数设置，断开与服务器通信，重启区域控制器才能恢复与服务器通信;\\r\\n\"); \n\t\t\ttcp_client_flag = tcp_client_flag&(~LWIP_SEND_HeartbeatDATA);\n\t\t\ttcp_client_flag = tcp_client_flag&(~LWIP_SEND_DATA);\t\t\t\n\t\t\tSendSerialPort((uint8_t *)g_SerialDat);\t//回复\n\t\t}\n\t}\n}\n\n//led任务//总线通信方式\nvoid led_task(void *pdata)\n{\n\tuint8_t Old_CostNum = 29;\t\t//流量计脉冲数 每升水计量周期\n\tuint8_t Old_WaterCost = 5;\t\t//WaterCost=水费 最小扣款金额 0.005元\n\tuint8_t Old_FM1702KeyCRC = 0;\t//Old_FM1702KeyCRC\n\tuint8_t Broadcast_Count=0;\t\t//广播发送计数值\n\tuint8_t PhysicalADD[4] = {0x00,0x00,0x00,0x00};\n    uint8_t u8Temp; //存储临时数据\n\tuint8_t Led_TaskCount = 0;\n    uint8_t ucCount = 50;\t//上电50秒\n\tuint8_t CycleCount =0;\n\tuint32_t BroadTime=0;\n\t\n    g_RUNDate[0][0] = 0;    //存储卡机使用总数，上电清0\n\tLED0 = 0;LED1 = 1;LED2 = 1;\n\t\n    OSTimeDlyHMSM(0,0,2,500);  \t//上电延时，等待总线上电完成\n    PowerUPLogitADDCheck(); \t//上电检测Flash内逻辑地址；\n    printf(\"上电检测Flash内逻辑地址完成! 总线：%2d.\\r\\n\",g_RUNDate[0][0]);  \n\tOSTimeDlyHMSM(0,0,0,200);  \t//延时200ms\n\tSendBroadcast_Key((uint8_t *)FM1702_Key);\n    OSTimeDlyHMSM(0,0,0,200);  \t//延时200ms\n    UnregisteredBroadcast();    //未注册广播\n    printf(\"未注册广播! \\r\\n\");      \n\tLED0 = 1;LED1 = 1;LED2 = 1;\n\tOld_CostNum = g_CostNum;\t//流量计脉冲数 每升水计量周期\n\tOld_WaterCost = g_WaterCost;//WaterCost=水费 最小扣款金额 0.005元\n\tucCount = ucCount - 2*(g_RUNDate[0][0]);\n\tif(ucCount<10)\tucCount = 10;\n    while(ucCount)\n    {\n        LED0 = !LED0;LED1 = !LED1;LED2 = !LED2;\n        printf(\"%2d. \",ucCount); \n\t\tif(ReadUnregistered((uint8_t *)PhysicalADD)!=0x00)  //有数据\n        {\n            printf(\"\\r\\n接收到从站完成数据  物理地址：%02X%02X%02X%02X;\",PhysicalADD[0],PhysicalADD[1],PhysicalADD[2],PhysicalADD[3]);   \n            u8Temp = Distribute_LogicADD((uint8_t *)PhysicalADD);\t//分配物理地址\n            printf(\"分配成功！ 逻辑地址:%d;\\r\\n\",u8Temp);  \n            if(u8Temp<=25)\n\t\t\t{\n\t\t\t\tKJ_Versions[u8Temp] = WriteLogitADD(u8Temp,(uint8_t *)PhysicalADD);\t//卡机固件版本号存储\n\t\t\t\tif(KJ_Versions[u8Temp] != 0x00)\t//分别逻辑地址成功\n\t\t\t\tg_RUNDate[0][0]++; g_RUNDate[u8Temp][0] = 0xAA; //总数+1；该地址使用；\n\t\t\t\tg_RUNDate[u8Temp][3] = PhysicalADD[0]; g_RUNDate[u8Temp][4] = PhysicalADD[1];//卡机SN\n\t\t\t\tg_RUNDate[u8Temp][5] = PhysicalADD[2]; g_RUNDate[u8Temp][6] = PhysicalADD[3];\n\t\t\t}\n        }\n\t\tif((ucCount%6)==0)\n\t\t{\n\t\t\tOSTimeDlyHMSM(0,0,0,100);  //延时100ms\n\t\t\tSendBroadcast_Key((uint8_t *)FM1702_Key);\n\t\t\tOSTimeDlyHMSM(0,0,0,100);  //延时100ms\n\t\t}\n\t\tucCount--;\n    }\n\tLED0 = 0;LED1 = 1;LED2 = 1;\n\tOSTimeDlyHMSM(0,0,0,200);  \t\t\n\tSendBroadcast_Key((uint8_t *)FM1702_Key);\t//上电广播RFID_Key\n\tOSTimeDlyHMSM(0,0,0,200);  \t\t\n\tSendBroadcast_Key((uint8_t *)FM1702_Key);\n\tg_PowerUpFlag = 0xAA;\t//初始化完成\n    printf(\"\\r\\n上电检测未注册超时，进入正常待机状态;\\r\\n\"); \n\tIWDG_Init(6,1024);    //与分频数为64,重载值为1024,溢出时间为6s\t   \n\twhile(1)\n\t{\n\t\tIWDG_Feed();\t//增加看门狗\n\t\tif((Old_CostNum != g_CostNum)||(Old_WaterCost != g_WaterCost))\n\t\t{\n\t\t\tSendBroadcast_Com(g_WaterCost,g_CostNum);\n\t\t\tif(Broadcast_Count<=2)\tBroadcast_Count++;\t//重复发送2次\n\t\t\telse\n\t\t\t{\n\t\t\t\tBroadcast_Count = 0;BroadTime=0;\n\t\t\t\tOld_CostNum = g_CostNum;\t//流量计脉冲数 每升水计量周期\n\t\t\t\tOld_WaterCost = g_WaterCost;//WaterCost=水费 最小扣款金额 0.005元\n\t\t\t}\n\t\t}\n\t\tif(Old_FM1702KeyCRC!=FM1702KeyCRC)\n\t\t{\n\t\t\tSendBroadcast_Key((uint8_t *)FM1702_Key);\n\t\t\tif(Broadcast_Count<=2)\tBroadcast_Count++;\t//重复发送2次\n\t\t\telse\n\t\t\t{\n\t\t\t\tBroadcast_Count = 0;\n\t\t\t\tOld_FM1702KeyCRC = FM1702KeyCRC;\n\t\t\t}\n\t\t}\n\t\tif(Led_TaskCount<=24)\n\t\t{   //2.轮循方式取数据\n\t\t\tReadRunningData(Led_TaskCount+1);\t\t\t\n\t\t\tWriteRFIDData(Led_TaskCount+1);\t\t\t\n\t\t}\n\n\t\tif(Led_TaskCount>=25)    \n\t\t{   \n\t\t\tprintf(\"\\r\\n\\r\\n\");    \tLed_TaskCount = 0;  \n\t\t\tif(CycleCount<20)\t\tCycleCount++;\t\n\t\t\telse\t\n\t\t\t{\t\n\t\t\t\tCycleCount = 0;\n\t\t\t\tif(Binary_searchSN()==0x00)\n\t\t\t\t{\n\t\t\t\t\tOSTimeDlyHMSM(0,0,0,50);  //延时50ms\n\t\t\t\t\tSendBroadcast_Com(g_WaterCost,g_CostNum);\n\t\t\t\t\tOSTimeDlyHMSM(0,0,0,200);  //延时200ms\n\t\t\t\t\tSendBroadcast_Key((uint8_t *)FM1702_Key);\n\t\t\t\t\tOSTimeDlyHMSM(0,0,0,200);  //延时200ms\n\t\t\t\t\tg_NewAddFlag = 0xAA;\n\t\t\t\t}\t\t\t\t\t\n\t\t\t}\n\t\t}            \n        else Led_TaskCount++;  \n\t\tif(BroadTime>0x000F0000)\t//20ms *1000\n\t\t{\n\t\t\tBroadTime=0;\n\t\t\tSendBroadcast_Com(g_WaterCost,g_CostNum);\n\t\t}\n\t\telse BroadTime++;\n\t\tOSTimeDlyHMSM(0,0,0,20);  //延时20ms\n \t}\n}\n",
+			"file": "/C/Users/xuan5/Desktop/YCKJ-ACU V0.1/39.10月份修改 - 卡机数量为32/USER/main.c",
+			"file_size": 10894,
+			"file_write_time": 131527837879348044,
+			"settings":
+			{
+				"buffer_size": 9769,
+				"encoding": "Western (Windows 1252)",
+				"line_ending": "Windows",
+				"scratch": true
+			}
+		}
+	],
+	"build_system": "",
+	"build_system_choices":
+	[
+	],
+	"build_varint": "",
+	"command_palette":
+	{
+		"height": 392.0,
+		"last_filter": "Package Control: ",
+		"selected_items":
+		[
+			[
+				"Package Control: ",
+				"Package Control: Install Package"
+			],
+			[
+				"Package Control: install",
+				"Package Control: Install Package"
+			]
+		],
+		"width": 444.0
+	},
+	"console":
+	{
+		"height": 406.0,
+		"history":
+		[
+			"mport urllib.request,os,hashlib; h = '7183a2d3e96f11eeadd761d777e62404' + 'e330c659d4bb41d3bdf022e94cab3cd0'; pf = 'Package Control.sublime-package'; ipp = sublime.installed_packages_path(); urllib.request.install_opener( urllib.request.build_opener( urllib.request.ProxyHandler()) ); by = urllib.request.urlopen( 'http://sublime.wbond.net/' + pf.replace(' ', '%20')).read(); dh = hashlib.sha256(by).hexdigest(); print('Error validating download (got %s instead of %s), please try manual install' % (dh, h)) if dh != h else open(os.path.join( ipp, pf), 'wb' ).write(by)",
+			"import urllib.request,os,hashlib; h = '7183a2d3e96f11eeadd761d777e62404' + 'e330c659d4bb41d3bdf022e94cab3cd0'; pf = 'Package Control.sublime-package'; ipp = sublime.installed_packages_path(); urllib.request.install_opener( urllib.request.build_opener( urllib.request.ProxyHandler()) ); by = urllib.request.urlopen( 'http://sublime.wbond.net/' + pf.replace(' ', '%20')).read(); dh = hashlib.sha256(by).hexdigest(); print('Error validating download (got %s instead of %s), please try manual install' % (dh, h)) if dh != h else open(os.path.join( ipp, pf), 'wb' ).write(by)"
+		]
+	},
+	"distraction_free":
+	{
+		"menu_visible": true,
+		"show_minimap": false,
+		"show_open_files": false,
+		"show_tabs": false,
+		"side_bar_visible": false,
+		"status_bar_visible": false
+	},
+	"expanded_folders":
+	[
+		"/C/Users/xuan5/Desktop/YCKJ-ACU V0.1/39.10月份修改 - 卡机数量为32",
+		"/C/Users/xuan5/Desktop/YCKJ-ACU V0.1/39.10月份修改 - 卡机数量为32/USER"
+	],
+	"file_history":
+	[
+		"/C/Users/xuan5/Desktop/YCKJ-ACU V0.1/39.10月份修改 - 卡机数量为32/keilkilll.bat",
+		"/C/Users/xuan5/Desktop/YCKJ-ACU V0.1/39.10月份修改 - 卡机数量为32/USER/main.c",
+		"/C/Users/xuan5/Desktop/YCKJ-ACU V0.1/38.10月份修改 -/HARDWARE/BSP/bsp_24cxx.c",
+		"/C/Users/xuan5/Desktop/YCKJ-ACU V0.1/38.10月份修改 -/LWIP/lwip_app/tcp_client_demo/tcp_client_demo.c",
+		"/C/Users/xuan5/Desktop/YCKJ-ACU V0.1/38.10月份修改 -/USER/main.c",
+		"/C/Users/xuan5/Desktop/YCKJ-KJ01 V1.0/YCKJ-KJ01 V4.2 在4.0版本上优化/USER/main.c",
+		"/C/Users/xuan5/Desktop/YCKJ-KJ01 V1.0/YCKJ-KJ01 V4.1 整体大修改/USER/stm8s_interruput.c",
+		"/C/Users/xuan5/Desktop/YCKJ-KJ01 V1.0/YCKJ-KJ01 V4.1 整体大修改/USER/bsp_tm1639.h",
+		"/C/Users/xuan5/Desktop/YCKJ-KJ01 V1.0/YCKJ-KJ01 V4.1 整体大修改/USER/tim2.c",
+		"/C/Users/xuan5/Desktop/YCKJ-KJ01 V1.0/YCKJ-KJ01 V4.1 整体大修改/USER/tim1.c",
+		"/C/Users/xuan5/Desktop/YCKJ-KJ01 V1.0/YCKJ-KJ01 V4.1 整体大修改/USER/tim1.h",
+		"/C/Users/xuan5/Desktop/YCKJ-KJ01 V1.0/YCKJ-KJ01 V4.1 整体大修改/USER/stm8s_conf.h",
+		"/C/Users/xuan5/Desktop/YCKJ-KJ01 V1.0/YCKJ-KJ01 V4.1 整体大修改/USER/bsp_fm1701.h",
+		"/C/Users/xuan5/Desktop/YCKJ-KJ01 V1.0/YCKJ-KJ01 V4.1 整体大修改/USER/bsp_uart2.c",
+		"/C/Users/xuan5/Desktop/YCKJ-KJ01 V1.0/YCKJ-KJ01 V4.1 整体大修改/USER/bsp_eeprom.h",
+		"/C/Users/xuan5/Desktop/YCKJ-KJ01 V1.0/YCKJ-KJ01 V4.1 整体大修改/USER/bsp_tm1639.c",
+		"/C/Users/xuan5/Desktop/YCKJ-KJ01 V1.0/YCKJ-KJ01 V4.1 整体大修改/USER/bsp_fm1701.c",
+		"/C/Users/xuan5/Desktop/YCKJ-KJ01 V1.0/YCKJ-KJ01 V4.1 整体大修改/USER/bsp_eeprom.c",
+		"/C/Users/xuan5/Desktop/YCKJ-KJ01 V1.0/YCKJ-KJ01 V4.1 整体大修改/USER/main.c",
+		"/C/Users/xuan5/Desktop/YCKJ-KJ01 V1.0/YCKJ-KJ01 V4.1 整体大修改/Project/Debug/Exe/Demo.out",
+		"/C/VM/share/SoC_ESP8266_32M_source/app/driver/hw_timer.c",
+		"/C/VM/share/SoC_ESP8266_32M_source/app/include/driver/hal_rgb_led.h",
+		"/C/VM/share/SoC_ESP8266_32M_source/app/driver/hal_rgb_led.c",
+		"/C/VM/share/SoC_ESP8266_32M_source/app/Gizwits/gizwits_protocol.h",
+		"/C/VM/share/SoC_ESP8266_32M_source/app/Gizwits/gizwits_product.c",
+		"/C/VM/share/SoC_ESP8266_32M_source/app/user/user_main.c"
+	],
+	"find":
+	{
+		"height": 30.0
+	},
+	"find_in_files":
+	{
+		"height": 218.0,
+		"where_history":
+		[
+			""
+		]
+	},
+	"find_state":
+	{
+		"case_sensitive": false,
+		"find_history":
+		[
+			"CardShowFlag",
+			"currentDataPoint",
+			"rgbControl"
+		],
+		"highlight": true,
+		"in_selection": false,
+		"preserve_case": false,
+		"regex": false,
+		"replace_history":
+		[
+		],
+		"reverse": false,
+		"show_context": true,
+		"use_buffer2": true,
+		"whole_word": false,
+		"wrap": true
+	},
+	"folders":
+	[
+		{
+			"path": "C:\\Users\\xuan5\\Desktop\\YCKJ-ACU V0.1\\39.10月份修改 - 卡机数量为32"
+		}
+	],
+	"groups":
+	[
+		{
+			"selected": 0,
+			"sheets":
+			[
+				{
+					"buffer": 0,
+					"file": "/C/Users/xuan5/Desktop/YCKJ-ACU V0.1/39.10月份修改 - 卡机数量为32/USER/main.c",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 9769,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								6568,
+								6568
+							]
+						],
+						"settings":
+						{
+							"in_converting": true,
+							"origin_encoding": "GB2312",
+							"syntax": "Packages/C++/C.sublime-syntax",
+							"translate_tabs_to_spaces": false
+						},
+						"translation.x": 0.0,
+						"translation.y": 4140.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 0,
+					"type": "text"
+				}
+			]
+		}
+	],
+	"incremental_find":
+	{
+		"height": 30.0
+	},
+	"input":
+	{
+		"height": 42.0
+	},
+	"layout":
+	{
+		"cells":
+		[
+			[
+				0,
+				0,
+				1,
+				1
+			]
+		],
+		"cols":
+		[
+			0.0,
+			1.0
+		],
+		"rows":
+		[
+			0.0,
+			1.0
+		]
+	},
+	"menu_visible": true,
+	"output.find_results":
+	{
+		"height": 0.0
+	},
+	"pinned_build_system": "",
+	"project": "",
+	"replace":
+	{
+		"height": 56.0
+	},
+	"save_all_on_build": true,
+	"select_file":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_project":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_symbol":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"selected_group": 0,
+	"settings":
+	{
+	},
+	"show_minimap": true,
+	"show_open_files": false,
+	"show_tabs": true,
+	"side_bar_visible": true,
+	"side_bar_width": 244.0,
+	"status_bar_visible": true,
+	"template_settings":
+	{
+	}
+}
