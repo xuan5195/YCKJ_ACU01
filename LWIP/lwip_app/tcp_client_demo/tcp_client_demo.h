@@ -19,7 +19,7 @@
 ////////////////////////////////////////////////////////////////////////////////// 	   
  
  
-#define TCP_CLIENT_RX_BUFSIZE	2000	//接收缓冲区长度
+#define TCP_CLIENT_RX_BUFSIZE	1024	//接收缓冲区长度
 #define REMOTE_PORT				20000	//定义远端主机的IP地址
 //#define LWIP_SEND_DATA			0X80    //定义有数据发送
 #define LWIP_SEND_HeartbeatDATA			0X40    //定义心跳数据包发送

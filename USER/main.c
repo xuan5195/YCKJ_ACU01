@@ -24,7 +24,7 @@
 #include "bsp_can.h"
 #include "bsp_canapp.h"
 
-uint8_t g_RUNDate[32][16]={0};    		//运行数据；
+uint8_t g_RUNDate[32][14]={0};    		//运行数据；
 uint8_t KJ_Versions[32]={0};			//卡机版本号缓存
 uint8_t g_PowerUpFlag=0;				//上电标志，0xAA上电完成
 uint8_t g_lwipADD[4]={0};				//远端IP地址
@@ -294,23 +294,23 @@ void led_task(void *pdata)
 				g_SendDate[0] = 0xAA;	//标志为使用
 				if((g_RUNDate[Led_TaskCount][0]&0x03) == 0x01)		g_SendDate[1] = 0x11;	//插卡
 				else if((g_RUNDate[Led_TaskCount][0]&0x03) == 0x02)g_SendDate[1] = 0x13;	//拔卡
-				g_SendDate[2] = g_RUNDate[Led_TaskCount][3];	//卡机SN
-				g_SendDate[3] = g_RUNDate[Led_TaskCount][4];	//卡机SN
-				g_SendDate[4] = g_RUNDate[Led_TaskCount][5];	//卡机SN
-				g_SendDate[5] = g_RUNDate[Led_TaskCount][6];	//卡机SN
-				g_SendDate[6] = g_RUNDate[Led_TaskCount][7];	//CardSN
-				g_SendDate[7] = g_RUNDate[Led_TaskCount][8];	//CardSN
-				g_SendDate[8] = g_RUNDate[Led_TaskCount][9];	//CardSN
-				g_SendDate[9] = g_RUNDate[Led_TaskCount][10];	//CardSN
-				g_SendDate[10] = g_RUNDate[Led_TaskCount][11];	//Card金额1
-				g_SendDate[11] = g_RUNDate[Led_TaskCount][12];	//Card金额2	
-				g_SendDate[12] = g_RUNDate[Led_TaskCount][13];	//Card金额3		
-				g_SendDate[13] = g_RUNDate[Led_TaskCount][14];	//校验	
+				g_SendDate[2] = g_RUNDate[Led_TaskCount][1];	//卡机SN
+				g_SendDate[3] = g_RUNDate[Led_TaskCount][2];	//卡机SN
+				g_SendDate[4] = g_RUNDate[Led_TaskCount][3];	//卡机SN
+				g_SendDate[5] = g_RUNDate[Led_TaskCount][4];	//卡机SN
+				g_SendDate[6] = g_RUNDate[Led_TaskCount][5];	//CardSN
+				g_SendDate[7] = g_RUNDate[Led_TaskCount][6];	//CardSN
+				g_SendDate[8] = g_RUNDate[Led_TaskCount][7];	//CardSN
+				g_SendDate[9] = g_RUNDate[Led_TaskCount][8];	//CardSN
+				g_SendDate[10] = g_RUNDate[Led_TaskCount][9];	//Card金额1
+				g_SendDate[11] = g_RUNDate[Led_TaskCount][10];	//Card金额2	
+				g_SendDate[12] = g_RUNDate[Led_TaskCount][11];	//Card金额3		
+				g_SendDate[13] = g_RUNDate[Led_TaskCount][12];	//校验	
 				g_SendDate[14] = Led_TaskCount;//逻辑地址	
-				g_SendDate[15] = g_RUNDate[Led_TaskCount][15];//通信码
+				g_SendDate[15] = g_RUNDate[Led_TaskCount][13];//通信码
 				q_err=OSQPost(q_msg,g_SendDate);	//发送队列
 				if(q_err!=OS_ERR_NONE) 	myfree(SRAMIN,g_SendDate);	//发送失败,释放内存
-				g_RUNDate[Led_TaskCount][1] = g_RUNDate[Led_TaskCount][1]&(~0x03);	//发送完成，清数据标志位					
+				g_RUNDate[Led_TaskCount][0] = g_RUNDate[Led_TaskCount][0]&(~0x03);	//发送完成，清数据标志位					
 			}
 
 		}
@@ -328,22 +328,22 @@ void led_task(void *pdata)
 			else	
 			{	
 				CycleCount = 0;
-				if(Binary_searchSN()==0x00)
-				{
-					OSTimeDlyHMSM(0,0,0,50);  //延时50ms
-					SendBroadcast_Com(g_WaterCost,g_CostNum);
-					OSTimeDlyHMSM(0,0,0,200);  //延时200ms
-					SendBroadcast_Key((uint8_t *)FM1702_Key);
-					OSTimeDlyHMSM(0,0,0,200);  //延时200ms
-					g_NewAddFlag = 0xAA;
-				}					
+//				if(Binary_searchSN()==0x00)
+//				{
+//					OSTimeDlyHMSM(0,0,0,50);  //延时50ms
+//					Can_SendBroadcast_Com(g_WaterCost,g_CostNum);
+//					OSTimeDlyHMSM(0,0,0,200);  //延时200ms
+//					Can_SendBroadcast_Key((uint8_t *)FM1702_Key);
+//					OSTimeDlyHMSM(0,0,0,200);  //延时200ms
+//					g_NewAddFlag = 0xAA;
+//				}					
 			}
 		}            
         else Led_TaskCount++;  
 		if(BroadTime>0x000F0000)	//20ms *1000
 		{
 			BroadTime=0;
-			SendBroadcast_Com(g_WaterCost,g_CostNum);
+			Can_SendBroadcast_Com(g_WaterCost,g_CostNum);
 		}
 		else BroadTime++;
 		OSTimeDlyHMSM(0,0,0,10);  //延时10ms

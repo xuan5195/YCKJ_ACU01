@@ -12,9 +12,7 @@
 #include "bsp_canapp.h"
 
 #define ADD_SIZE	32
-extern uint8_t g_RUNDate[32][16];    //运行数据；
-extern uint8_t PBus_Count;
-extern uint8_t PBusDat[16];
+extern uint8_t g_RUNDate[32][14];    //运行数据；
 extern uint8_t KJ_Versions[32];	//卡机版本号
 
 /*
@@ -128,9 +126,9 @@ void PowerUPLogitADDCheck(void)
 				if(KJ_Versions[i] != 0x00)	//分别逻辑地址成功
 				{
 					++g_RUNDate[0][0]; 		//总数+1；该地址使用；
-					g_RUNDate[i][0] = g_RUNDate[i][0]|0x80;	//总数+1；该地址使用；
-					g_RUNDate[i][3] = Physical_Temp[0]; g_RUNDate[i][4] = Physical_Temp[1];	//卡机SN
-					g_RUNDate[i][5] = Physical_Temp[2]; g_RUNDate[i][6] = Physical_Temp[3];
+					g_RUNDate[i][0] = 0x80;	//总数+1；该地址使用；
+					g_RUNDate[i][1] = Physical_Temp[0]; g_RUNDate[i][2] = Physical_Temp[1];	//卡机SN
+					g_RUNDate[i][3] = Physical_Temp[2]; g_RUNDate[i][4] = Physical_Temp[3];
 					printf("Ver[%02d]=%02X\r\n",i,KJ_Versions[i]);               
 				}
 				else
@@ -140,9 +138,9 @@ void PowerUPLogitADDCheck(void)
 					if(KJ_Versions[i] != 0x00)	//分别逻辑地址成功
 					{
 						++g_RUNDate[0][0]; 		//总数+1；该地址使用；
-						g_RUNDate[i][0] = g_RUNDate[i][0]|0x80;	//总数+1；该地址使用；
-						g_RUNDate[i][3] = Physical_Temp[0]; g_RUNDate[i][4] = Physical_Temp[1];	//卡机SN
-						g_RUNDate[i][5] = Physical_Temp[2]; g_RUNDate[i][6] = Physical_Temp[3];
+						g_RUNDate[i][0] = 0x80;	//总数+1；该地址使用；
+						g_RUNDate[i][1] = Physical_Temp[0]; g_RUNDate[i][2] = Physical_Temp[1];	//卡机SN
+						g_RUNDate[i][3] = Physical_Temp[2]; g_RUNDate[i][4] = Physical_Temp[3];
 						printf("Ver[%02d]=%02X,分配成功！\r\n",i,KJ_Versions[i]);               
 					}
 					else

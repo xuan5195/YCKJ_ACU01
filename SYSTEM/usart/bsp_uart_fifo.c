@@ -30,10 +30,6 @@
     #include "includes.h"					//ucos 使用	  
 #endif
 
-uint8_t PBus_Count;
-uint8_t PBusDat[16];
-uint8_t RS485_Count;
-uint8_t RS485Dat[10];
 extern uint8_t g_SerialDat[32];
 extern uint8_t g_Serial_Count;
 
@@ -255,7 +251,7 @@ uint8_t comGetChar(COM_PORT_E _ucPort, uint8_t *_pByte)
 
 	return UartGetChar(pUart, _pByte);
 }
-
+/*
 void ReceivePowerBUSDat(uint8_t _mode)
 {
     uint8_t read,CRC_Dat;
@@ -286,7 +282,7 @@ void ReceivePowerBUSDat(uint8_t _mode)
 						else    //带核验模式
 						{
                             CRC_Dat = CRC8_Table(PBusDat,PBus_Count-1);
-                            if(CRC_Dat == PBusDat[PBus_Count-1])	PBus_Count|=0x80;	/*接收完成了 */
+                            if(CRC_Dat == PBusDat[PBus_Count-1])	PBus_Count|=0x80;	//接收完成了 
                             else	PBus_Count = 0;
                         }
                     }
@@ -294,7 +290,7 @@ void ReceivePowerBUSDat(uint8_t _mode)
             }            
         }
     }
-}
+}*/
 void ReceiveSerialDat(void)
 {
     uint8_t read,CRC_Dat;

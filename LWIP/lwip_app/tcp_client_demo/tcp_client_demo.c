@@ -20,10 +20,9 @@ u8 tcp_client_heartbeatsendbuf[32]=	//TCP客户端发送心跳包数据缓冲区
 u8 tcp_client_cardsendbuf[0x21]=	    //TCP客户端发送卡数据包数据缓冲区
 {0xF3,0x21,0x11,0x31,0x30,0x30,0x30,0x30,0x30,0x30,0x2D,0x62,0x37,0x36,0x31,0x63,0x32,0x62,0x30,0xD1,0xD2,0xD3,0xD4,0xC1,0xC2,0xC3,0xC4,0xD9,0x4E,0x20,0x00,0x00};	
 u8 tcp_client_flag;		//TCP客户端数据发送标志位
-extern uint8_t g_RUNDate[32][16];    //运行数据；
+extern uint8_t g_RUNDate[32][14];    //运行数据；
 extern uint8_t KJ_Versions[32];	//卡机版本号
 
-uint8_t g_LockFlag=0;
 	
 extern uint8_t g_lwipADD[4];	//远端IP地址
 extern uint16_t g_lwipPort;		//远端端口号
@@ -32,8 +31,7 @@ extern uint8_t g_ACUAdd[16];	//通信码16位
 
 extern uint8_t g_CostNum;		//流量计脉冲数 每升水计量周期
 extern uint8_t g_WaterCost;		//WaterCost=水费 最小扣款金额 0.005元
-extern uint8_t FM1702KeyCRC;
-extern uint8_t FM1702_Key[7];		//FM1702_Key[0]-[5]为Key;FM1702_Key[6]为块地址；
+
 extern OS_EVENT * q_msg;			//消息队列
 extern OS_EVENT * q_msg_ser;		//消息队列 服务器回复数据
 
@@ -99,25 +97,26 @@ static void tcp_client_thread(void *arg)
 					if(i_SendCount>=BUSNUM_SIZE)	i_SendCount = 1;
 					else							i_SendCount++;
 					printf("\r\n心跳包：%2d\r\n",i_SendCount);
-					if(g_RUNDate[i_SendCount][0] != 0x00)
+					if((g_RUNDate[i_SendCount][0]&0xF0) != 0x00)
 					{
 						if(SendRecvCount<200)	SendRecvCount++;
-						tcp_client_heartbeatsendbuf[23] = g_RUNDate[i_SendCount][3]; tcp_client_heartbeatsendbuf[24] = g_RUNDate[i_SendCount][4];   //卡机SN
-						tcp_client_heartbeatsendbuf[25] = g_RUNDate[i_SendCount][5]; tcp_client_heartbeatsendbuf[26] = g_RUNDate[i_SendCount][6];   //卡机SN
+						tcp_client_heartbeatsendbuf[23] = g_RUNDate[i_SendCount][1]; tcp_client_heartbeatsendbuf[24] = g_RUNDate[i_SendCount][2];   //卡机SN
+						tcp_client_heartbeatsendbuf[25] = g_RUNDate[i_SendCount][3]; tcp_client_heartbeatsendbuf[26] = g_RUNDate[i_SendCount][4];   //卡机SN
 						tcp_client_heartbeatsendbuf[27] = VersionNo;	//区域固件版本号
 						tcp_client_heartbeatsendbuf[28] = KJ_Versions[i_SendCount];	//卡机固件版本号
-						if(g_RUNDate[i_SendCount][1] != 0x00)	tcp_client_heartbeatsendbuf[29] = 0xAA;	//正常
-						else            						tcp_client_heartbeatsendbuf[29] = 0x00;	//失联
+						tcp_client_heartbeatsendbuf[29] = 0xAA;	//正常
+						if((g_RUNDate[i_SendCount][0]&0x20) == 0x20)	tcp_client_heartbeatsendbuf[29] = 0x00;	//失联
+						else            								tcp_client_heartbeatsendbuf[29] = 0xAA;	//正常
 						tcp_client_heartbeatsendbuf[30] = i_SendCount;	//卡机逻辑地址
                         err = netconn_write(tcp_clientconn ,tcp_client_heartbeatsendbuf,tcp_client_heartbeatsendbuf[1],NETCONN_COPY); //发送tcp_server_sentbuf中的数据
 						if(err != ERR_OK)		printf("发送失败\r\n");					
 					}
-//					else
-//					{
-//						tcp_client_heartbeatsendbuf[30] = i_SendCount;	//卡机逻辑地址
-//                        err = netconn_write(tcp_clientconn ,tcp_client_heartbeatsendbuf,tcp_client_heartbeatsendbuf[1],NETCONN_COPY); //发送tcp_server_sentbuf中的数据
-//						if(err != ERR_OK)		printf("发送失败\r\n");										
-//					}
+					else
+					{
+						tcp_client_heartbeatsendbuf[30] = i_SendCount;	//卡机逻辑地址
+                        err = netconn_write(tcp_clientconn ,tcp_client_heartbeatsendbuf,tcp_client_heartbeatsendbuf[1],NETCONN_COPY); //发送tcp_server_sentbuf中的数据
+						if(err != ERR_OK)		printf("发送失败\r\n");										
+					}
 					tcp_client_flag &= ~LWIP_SEND_HeartbeatDATA;	//发送完成，清标志位
 				}
 				{
@@ -244,7 +243,7 @@ static void tcp_client_thread(void *arg)
 				}
 				else
 				{
-					if(SendRecvCount>20)
+					if(SendRecvCount>10)
 					{
 						SendRecvCount = 0;
 						netconn_close(tcp_clientconn);
