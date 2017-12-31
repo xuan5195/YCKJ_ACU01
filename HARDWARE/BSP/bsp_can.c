@@ -135,7 +135,7 @@ u8 Can_Receive_Msg(u8 *buf)
 
 void Package_Send(u8 _mode,u8 *Package_Dat)
 {
-	uint8_t res;
+	//uint8_t res;
 	uint8_t Package_SendBuf[8]={0x00};//发送缓冲区
 	switch (_mode)
     {
@@ -210,11 +210,12 @@ void Package_Send(u8 _mode,u8 *Package_Dat)
     	default:
     		break;
     }
-	printf("CAN_Send:%02X %02X %02X %02X %02X %02X %02X %02X\r\n",Package_SendBuf[0],Package_SendBuf[1],\
+	//printf("CAN_Send:%02X %02X %02X %02X %02X %02X %02X %02X\r\n",Package_SendBuf[0],Package_SendBuf[1],\
 	Package_SendBuf[2],Package_SendBuf[3],Package_SendBuf[4],Package_SendBuf[5],Package_SendBuf[6],Package_SendBuf[7]);
-	res = Can_Send_Msg(Package_SendBuf,8);//发送8个字节
-	if(res)	printf(" F, ");	
-	else 	printf(" S, ");	
+	//res = Can_Send_Msg(Package_SendBuf,8);//发送8个字节
+	Can_Send_Msg(Package_SendBuf,8);//发送8个字节
+	//if(res)	printf(" F, ");	
+	//else 	printf(" S, ");	
 }
 
 

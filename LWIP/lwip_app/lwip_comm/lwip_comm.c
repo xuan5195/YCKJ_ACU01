@@ -12,6 +12,7 @@
 #include "malloc.h"
 #include "delay.h"
 #include "bsp_uart_fifo.h"//#include "usart.h"  
+#include "bsp_serialport.h"
 #include <stdio.h>
 #include "includes.h"
 //////////////////////////////////////////////////////////////////////////////////	 
@@ -70,7 +71,7 @@ extern u8_t *ram_heap;					//在mem.c里面定义.
 extern uint8_t g_lwipADD[4];	//远端IP地址
 extern uint16_t g_lwipPort;		//远端端口号
 extern uint8_t g_ACUSN[4];		//区域控制器SN 4位
-extern uint8_t g_ACUAdd[16];	//通信码16位
+//extern uint8_t g_ACUAdd[16];	//通信码16位
 
 //extern uint8_t g_SetIPFlag;			//0xAA:使用静态IP地址
 extern uint8_t g_Setip[5];       	//本机IP地址
@@ -121,11 +122,11 @@ void lwip_comm_mem_free(void)
 //lwipx:lwip控制结构体指针
 void lwip_comm_default_ip_set(__lwip_dev *lwipx)
 {
-	//默认远端IP为:192.168.1.110
+	//远端IP为:192.168.1.110
 //	lwipx->remoteip[0]=192;	
 //	lwipx->remoteip[1]=168;
 //	lwipx->remoteip[2]=1;
-//	lwipx->remoteip[3]=102;
+//	lwipx->remoteip[3]=106;
 	lwipx->remoteip[0]=g_lwipADD[0];	
 	lwipx->remoteip[1]=g_lwipADD[1];
 	lwipx->remoteip[2]=g_lwipADD[2];

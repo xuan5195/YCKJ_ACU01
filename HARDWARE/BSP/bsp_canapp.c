@@ -22,7 +22,7 @@ uint8_t Can_WriteLogitADD(uint8_t _LogitADD,uint8_t *_PhysicalADD)
 	Package_Send(0x02,(uint8_t *)Runningbuf);	//写入逻辑地址
 
 	Overflow_Flag = 20;
-    printf("Over = %d",Overflow_Flag);  
+    printf("Over=%d",Overflow_Flag);  
 	while((res==0)&& (Overflow_Flag>0) )//接收到有数据
 	{
 		res=Can_Receive_Msg(Recebuf);
@@ -31,10 +31,10 @@ uint8_t Can_WriteLogitADD(uint8_t _LogitADD,uint8_t *_PhysicalADD)
 		OSTimeDlyHMSM(0, 0, 0, 5);
 		Overflow_Flag--;
 	}
-    printf("- %d;",Overflow_Flag); 
+    printf("-%d; ",Overflow_Flag); 
 	if(res!=0)
 	{
-		printf("Re<<%02X%02X%02X%02X%02X%02X%02X%02X",Recebuf[0],Recebuf[1],Recebuf[2],Recebuf[3],Recebuf[4],Recebuf[5],Recebuf[6],Recebuf[7]);
+		printf("Re<<%02X%02X%02X%02X%02X%02X%02X%02X ",Recebuf[0],Recebuf[1],Recebuf[2],Recebuf[3],Recebuf[4],Recebuf[5],Recebuf[6],Recebuf[7]);
 		if( (Recebuf[0] == 0xC2)&&(Recebuf[1] == Runningbuf[0])&&(Recebuf[2] == Runningbuf[1])\
 		&&(Recebuf[3] == Runningbuf[2])&&(Recebuf[4] == Runningbuf[3])&&(Recebuf[5] == Runningbuf[4]))
 		{
@@ -57,7 +57,7 @@ void Can_SendBroadcast_Key(uint8_t *_uBuff)
 	Runningbuf[4] = *(_uBuff+4);	//
 	Runningbuf[5] = *(_uBuff+5);	//
 	Runningbuf[6] = *(_uBuff+6);	//块
-	printf(">>>>>>>>>广播 RFID_Key %2X%2X%2X%2X%2X%2X,块地址：%d\r\n",Runningbuf[0],Runningbuf[1],Runningbuf[2],Runningbuf[3],Runningbuf[4],Runningbuf[5],Runningbuf[6]);
+	//printf(">>>>>>>>>广播 RFID_Key %2X%2X%2X%2X%2X%2X,块地址：%d\r\n",Runningbuf[0],Runningbuf[1],Runningbuf[2],Runningbuf[3],Runningbuf[4],Runningbuf[5],Runningbuf[6]);
 	Package_Send(0x03,(uint8_t *)Runningbuf);
 }
 //未注册广播 
@@ -93,7 +93,7 @@ uint8_t Can_ReadUnregistered(uint8_t *_uBuff)
 	//printf("- %d;",Overflow_Flag);  
 	if(res)
 	{
-		printf("Rece<<%02X%02X%02X%02X%02X%02X%02X%02X\r\n",Recebuf[0],Recebuf[1],Recebuf[2],Recebuf[3],Recebuf[4],Recebuf[5],Recebuf[6],Recebuf[7]);
+		//printf("Rece<<%02X%02X%02X%02X%02X%02X%02X%02X\r\n",Recebuf[0],Recebuf[1],Recebuf[2],Recebuf[3],Recebuf[4],Recebuf[5],Recebuf[6],Recebuf[7]);
 		if( Recebuf[0]==0xB3 )	
 		{
 			_uBuff[0] = Recebuf[1];	//卡机物理地址1；
@@ -128,10 +128,10 @@ uint8_t Can_SendPBus_Com(uint8_t _uDat,uint8_t *_uBuff)
 		OSTimeDlyHMSM(0, 0, 0, 5);
 		Overflow_Flag--;
 	}
-    printf("- %d;  ",Overflow_Flag);
+    printf("- %d;  \r\n",Overflow_Flag);
 	if(res)
 	{
-		printf("%02X %02X %02X %02X %02X %02X %02X %02X\r\n",Recebuf[0],Recebuf[1],Recebuf[2],Recebuf[3],Recebuf[4],Recebuf[5],Recebuf[6],Recebuf[7]);
+		//printf("%02X %02X %02X %02X %02X %02X %02X %02X\r\n",Recebuf[0],Recebuf[1],Recebuf[2],Recebuf[3],Recebuf[4],Recebuf[5],Recebuf[6],Recebuf[7]);
 		if( ( Recebuf[1] == _uDat )&&(Recebuf[0] == 0x02 ))		ReTemp = 0x02;	//无数据
 		else if( ( Recebuf[1] == _uDat )&&(Recebuf[0] == 0x03 ))	//插卡数据包1
 		{

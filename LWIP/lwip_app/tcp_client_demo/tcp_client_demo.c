@@ -66,7 +66,7 @@ static void tcp_client_thread(void *arg)
 	ser_Date=mymalloc(SRAMIN,11);	//申请11个字节的内存
 		
 	LWIP_UNUSED_ARG(arg);
-	//server_port = REMOTE_PORT;
+//	server_port = REMOTE_PORT;	//测试使用
 	server_port = g_lwipPort;	//远端端口号
 	IP4_ADDR(&server_ipaddr, lwipdev.remoteip[0],lwipdev.remoteip[1], lwipdev.remoteip[2],lwipdev.remoteip[3]);
 
@@ -98,7 +98,7 @@ static void tcp_client_thread(void *arg)
 					LED2 = 1;
 					if(i_SendCount>=BUSNUM_SIZE)	i_SendCount = 1;
 					else							i_SendCount++;
-					printf("\r\n发送心跳包：%2d\r\n",i_SendCount);
+					printf("\r\n心跳包：%2d\r\n",i_SendCount);
 					if(g_RUNDate[i_SendCount][0] != 0x00)
 					{
 						if(SendRecvCount<200)	SendRecvCount++;
@@ -112,6 +112,12 @@ static void tcp_client_thread(void *arg)
                         err = netconn_write(tcp_clientconn ,tcp_client_heartbeatsendbuf,tcp_client_heartbeatsendbuf[1],NETCONN_COPY); //发送tcp_server_sentbuf中的数据
 						if(err != ERR_OK)		printf("发送失败\r\n");					
 					}
+//					else
+//					{
+//						tcp_client_heartbeatsendbuf[30] = i_SendCount;	//卡机逻辑地址
+//                        err = netconn_write(tcp_clientconn ,tcp_client_heartbeatsendbuf,tcp_client_heartbeatsendbuf[1],NETCONN_COPY); //发送tcp_server_sentbuf中的数据
+//						if(err != ERR_OK)		printf("发送失败\r\n");										
+//					}
 					tcp_client_flag &= ~LWIP_SEND_HeartbeatDATA;	//发送完成，清标志位
 				}
 				{

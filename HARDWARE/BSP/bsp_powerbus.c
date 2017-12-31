@@ -357,7 +357,7 @@ void ReadRunningData(uint8_t _no)
 		uDat = Can_SendPBus_Com(_no,(uint8_t *)TempBuff);		//发送轮循取数据命令
 		if( uDat == 0x00 )		uDat = Can_SendPBus_Com(_no,(uint8_t *)TempBuff);
 		{
-			printf("uDat = %2d; ",uDat); 
+			//printf("uDat = %2d; ",uDat); 
 			if( uDat == 0x02 )		//无数据	
 			{
 				g_RUNDate[_no][1] = 0xDD;
@@ -404,7 +404,7 @@ void ReadRunningData(uint8_t _no)
 				if(g_RUNDate[_no][2]==0x05)		uBuff[5] = 0xAA;	//卡状态 05表示插卡
 				else if(g_RUNDate[_no][2]==0x06)uBuff[5] = 0x55;	//卡状态 06表示拔卡
 				OSTimeDlyHMSM(0, 0, 0, 5);
-				printf("%02X %02X %02X %02X %02X %02X %02X %02X\r\n",uBuff[0],uBuff[1],uBuff[2],uBuff[3],uBuff[4],uBuff[5],uBuff[6],uBuff[7]);
+				//printf("%02X %02X %02X %02X %02X %02X %02X %02X\r\n",uBuff[0],uBuff[1],uBuff[2],uBuff[3],uBuff[4],uBuff[5],uBuff[6],uBuff[7]);
 				Can_ReadPBus_Succeed((uint8_t *)uBuff);//回复取回成功
 				//OSTimeDlyHMSM(0, 0, 0, 50);
 			}

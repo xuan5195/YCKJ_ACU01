@@ -4,6 +4,7 @@
 
 #define VersionNo 	0xC1	//区域固件版本号
 #define TestFlag	1		//测试标志
+//#define lwipTestFlag	1	//测试标志
 
 
 #define SERIALPORT_COM	COM3	//USB转串口通信口

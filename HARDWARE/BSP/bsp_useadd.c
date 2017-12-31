@@ -131,11 +131,11 @@ void PowerUPLogitADDCheck(void)
 					++g_RUNDate[0][0]; g_RUNDate[i][0] = 0xAA;	//总数+1；该地址使用；
 					g_RUNDate[i][3] = Physical_Temp[0]; g_RUNDate[i][4] = Physical_Temp[1];	//卡机SN
 					g_RUNDate[i][5] = Physical_Temp[2]; g_RUNDate[i][6] = Physical_Temp[3];
-					printf("Ver[%02d]=%02X,分配成功！\r\n",i,KJ_Versions[i]);               
+					printf("Ver[%02d]=%02X\r\n",i,KJ_Versions[i]);               
 				}
 				else
 				{
-					printf("\r\n第一次分配失败！  ");               
+					printf("\r\n分配失败！  ");               
 					//KJ_Versions[i] = WriteLogitADD(i,(uint8_t *)Physical_Temp);
 					KJ_Versions[i] = Can_WriteLogitADD(i,(uint8_t *)Physical_Temp);
 					if(KJ_Versions[i] != 0x00)	//分别逻辑地址成功
@@ -143,7 +143,7 @@ void PowerUPLogitADDCheck(void)
 						++g_RUNDate[0][0]; g_RUNDate[i][0] = 0xAA;	//总数+1；该地址使用；
 						g_RUNDate[i][3] = Physical_Temp[0]; g_RUNDate[i][4] = Physical_Temp[1];	//卡机SN
 						g_RUNDate[i][5] = Physical_Temp[2]; g_RUNDate[i][6] = Physical_Temp[3];
-						printf("Ver[%02d]=%02X,第二次分配成功！\r\n",i,KJ_Versions[i]);               
+						printf("Ver[%02d]=%02X,分配成功！\r\n",i,KJ_Versions[i]);               
 					}
 					else
 					{

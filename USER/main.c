@@ -65,6 +65,7 @@ OS_STK START_TASK_STK[START_STK_SIZE];	//任务堆栈
 void start_task(void *pdata);			//任务函数 
 
 
+//OS_TMR   * tmr1;			//软件定时器1
 OS_EVENT * q_msg_ser;		//消息队列 服务器回复数据
 OS_EVENT * q_msg;			//消息队列
 void * MsgGrp_ser[100];		//消息队列存储地址,最大支持100个消息	 服务器回复数据
@@ -150,7 +151,7 @@ void key_task(void *pdata)
 			if(SerialSetFlag==0x00)	//串口设置标志，修改配置后，重启才能与服务器通信
 			{
 				if(Key_Task_Count<6000) {	Key_Task_Count++;	}
-				else 					{	Key_Task_Count = 0;	} //周期为300秒;
+				else 					{	Key_Task_Count = 0;	} //周期为300秒; 6000*50ms=300 000ms=300s
 				if(g_NewAddFlag==0xAA)	{	g_NewAddFlag=0x00;	HeartSendCount=1000;}
 				if(HeartSendCount<80)	{	HeartSendCount++;	PrintfCount=0;} //去掉刚上电时卡机还没注册；
 				else if(HeartSendCount<1800)
@@ -166,8 +167,13 @@ void key_task(void *pdata)
 				else
 				{
 					HeartSendCount = 5000;
-					if((Key_Task_Count%240)==1)  //10秒钟发一次；
-						tcp_client_flag |= LWIP_SEND_HeartbeatDATA; //标记LWIP有心跳数据包要发送;				
+//					#if TestFlag
+//						if((Key_Task_Count%50)==1)  //2.5秒钟发一次；//测试使用
+//							tcp_client_flag |= LWIP_SEND_HeartbeatDATA; //标记LWIP有心跳数据包要发送;				
+//					#else
+						if((Key_Task_Count%200)==1)  //10秒钟发一次；
+							tcp_client_flag |= LWIP_SEND_HeartbeatDATA; //标记LWIP有心跳数据包要发送;				
+//					#endif
 				}
 				
 			}
@@ -215,11 +221,9 @@ void led_task(void *pdata)
     OSTimeDlyHMSM(0,0,2,500);  	//上电延时，等待总线上电完成
     PowerUPLogitADDCheck(); 	//上电检测Flash内逻辑地址；
     printf("上电检测Flash内逻辑地址完成! 总线：%2d.\r\n",g_RUNDate[0][0]);  
-	OSTimeDlyHMSM(0,0,0,200);  	//延时200ms
-	//SendBroadcast_Key((uint8_t *)FM1702_Key);
+	OSTimeDlyHMSM(0,0,0,100);  	//延时100ms
 	Can_SendBroadcast_Key((uint8_t *)FM1702_Key);
-    OSTimeDlyHMSM(0,0,0,200);  	//延时200ms
-    //UnregisteredBroadcast();    //未注册广播
+    OSTimeDlyHMSM(0,0,0,100);  	//延时100ms
 	Can_UnregisteredBroadcast();   //未注册广播
     printf("未注册广播! \r\n");      
 	LED0 = 1;LED1 = 1;LED2 = 1;
@@ -246,20 +250,12 @@ void led_task(void *pdata)
 				else							printf("Ver[%02d]=%02X,分配成功！\r\n",u8Temp,KJ_Versions[u8Temp]);
 			}
 		}
-//		res=Can_Receive_Msg(canbuf);
-//		if(res)//接收到有数据
-//		{
-//			printf("Rece>>>>>>%02X%02X%02X%02X%02X%02X%02X%02X   \r\n",canbuf[0],canbuf[1],canbuf[2],canbuf[3],canbuf[4],canbuf[5],canbuf[6],canbuf[7]);
-//		}
 		ucCount--;		
 	}
 	LED0 = 0;LED1 = 1;LED2 = 1;
 	OSTimeDlyHMSM(0,0,0,200);  		
-    //PowerUPLogitADDCheck(); 	//上电检测Flash内逻辑地址；
-	//SendBroadcast_Key((uint8_t *)FM1702_Key);	//上电广播RFID_Key
 	Can_SendBroadcast_Key((uint8_t *)FM1702_Key);
 	OSTimeDlyHMSM(0,0,0,200);  		
-	//SendBroadcast_Key((uint8_t *)FM1702_Key);
 	Can_SendBroadcast_Key((uint8_t *)FM1702_Key);
 	g_PowerUpFlag = 0xAA;	//初始化完成
     printf("\r\n上电检测未注册超时，进入正常待机状态;\r\n"); 
@@ -269,7 +265,6 @@ void led_task(void *pdata)
 		IWDG_Feed();	//增加看门狗
 		if((Old_CostNum != g_CostNum)||(Old_WaterCost != g_WaterCost))
 		{
-			//SendBroadcast_Com(g_WaterCost,g_CostNum);
 			Can_SendBroadcast_Com(g_WaterCost,g_CostNum);
 			if(Broadcast_Count<=2)	Broadcast_Count++;	//重复发送2次
 			else
@@ -281,7 +276,6 @@ void led_task(void *pdata)
 		}
 		if(Old_FM1702KeyCRC!=FM1702KeyCRC)
 		{
-			//SendBroadcast_Key((uint8_t *)FM1702_Key);
 			Can_SendBroadcast_Key((uint8_t *)FM1702_Key);
 			if(Broadcast_Count<=2)	Broadcast_Count++;	//重复发送2次
 			else
@@ -293,7 +287,6 @@ void led_task(void *pdata)
 		if(Led_TaskCount<BUSNUM_SIZE)
 		{   //2.轮循方式取数据
 			ReadRunningData(Led_TaskCount+1);			
-			//WriteRFIDData(Led_TaskCount+1);			
 
 			if(g_RUNDate[Led_TaskCount][1] == 0xAA)	//有数据
 			{
@@ -327,10 +320,10 @@ void led_task(void *pdata)
 		}
 		myfree(SRAMIN,p);
 
-		if(Led_TaskCount>=33)    
+		if( Led_TaskCount >= (BUSNUM_SIZE+1) )    
 		{   
 			printf("\r\n\r\n");    	Led_TaskCount = 0;  
-			if(CycleCount<20)		CycleCount++;	
+			if(CycleCount<50)		CycleCount++;	
 			else	
 			{	
 				CycleCount = 0;
