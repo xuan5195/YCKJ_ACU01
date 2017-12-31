@@ -321,17 +321,16 @@ void ReadRunningData(uint8_t _no)
 }
 
 //轮循方式取通信数据
-//_no:逻辑地址
 void WriteRFIDData(uint8_t *_WriteDat)
 {	
 	uint8_t TempBuff[10]={0x00};
 	uint8_t Runningbuf[8]={0x00},Recebuf[8]={0};
-	uint8_t _no=0,res=0,Overflow_Flag=10;
+	uint8_t res=0,Overflow_Flag=10;
     LED1 = !LED1;//LED1 = 0;
-	_no	= _WriteDat[9];	//逻辑地址
-	printf("\r\n服务器 %2d; ",_no); 
 	if(_WriteDat[0] == 0xAA)	//正常数据
 	{
+		g_RUNDate[_WriteDat[9]][0] = (g_RUNDate[_WriteDat[9]][0]&0x3F)|0x80;
+		printf("\r\n服务器 %2d; ",_WriteDat[9]); 
 		TempBuff[0] = _WriteDat[1];	//卡SN 1
 		TempBuff[1] = _WriteDat[2];	//卡SN 2
 		TempBuff[2] = _WriteDat[3];	//卡SN 3
@@ -369,16 +368,20 @@ void WriteRFIDData(uint8_t *_WriteDat)
 	}
 	else if(_WriteDat[0] == 0xBB)	////插卡数据包 异常数据 与卡相关
 	{
-		Runningbuf[0] = _no;	//逻辑地址
-		Runningbuf[1] = _WriteDat[2];	//错误代码"E"
-		Runningbuf[2] = _WriteDat[3];	//错误代码高位
-		Runningbuf[3] = _WriteDat[4];	//错误代码中位
-		Runningbuf[4] = _WriteDat[5];	//错误代码低位
-		Runningbuf[5] = _WriteDat[6];	//通信码
-		Package_Send(0x11,(u8 *)Runningbuf);
+		printf("\r\n服务器 插卡数据包 异常 %2d; ",_WriteDat[1]); 
+		Runningbuf[0] = _WriteDat[1];	//逻辑地址
+		Runningbuf[1] = _WriteDat[2];	//卡号1
+		Runningbuf[2] = _WriteDat[3];	//卡号2
+		Runningbuf[3] = _WriteDat[4];	//卡号3
+		Runningbuf[4] = _WriteDat[5];	//卡号4
+		Runningbuf[5] = _WriteDat[6];	//错误代码
+		Runningbuf[6] = _WriteDat[7];	//通信码
+		Package_Send(0x13,(u8 *)Runningbuf);	//加入卡号识别，防止写错卡
 	}
 	else if(_WriteDat[0] == 0x55)	////心跳包 异常数据 与卡机相关
 	{
+		g_RUNDate[_WriteDat[1]][0] = (g_RUNDate[_WriteDat[1]][0]&0x3F)|0x40;
+		printf("\r\n服务器 心跳包 异常 %2d; ",_WriteDat[1]); 
 		Runningbuf[0] = _WriteDat[1];	//逻辑地址
 		Runningbuf[1] = _WriteDat[2];	//错误代码"E"
 		Runningbuf[2] = _WriteDat[3];	//错误代码高位

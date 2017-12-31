@@ -207,6 +207,16 @@ void Package_Send(u8 _mode,u8 *Package_Dat)
 			Package_SendBuf[5] = Package_Dat[4];	//错误代码
 			Package_SendBuf[6] = Package_Dat[5];	//通信码
 			break;
+		case 0x13:	//错误代码 与卡或用户相关
+ 			Package_SendBuf[0] = 0x13;
+			Package_SendBuf[1] = Package_Dat[0];	//逻辑地址
+ 			Package_SendBuf[2] = Package_Dat[1];	//卡号1
+ 			Package_SendBuf[3] = Package_Dat[2];	//卡号2
+			Package_SendBuf[4] = Package_Dat[3];	//卡号3
+			Package_SendBuf[5] = Package_Dat[4];	//卡号4
+			Package_SendBuf[6] = Package_Dat[5];	//错误代码
+			Package_SendBuf[7] = Package_Dat[6];	//通信码
+			break;
     	default:
     		break;
     }

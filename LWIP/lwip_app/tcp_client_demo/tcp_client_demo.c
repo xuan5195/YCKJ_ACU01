@@ -182,18 +182,18 @@ static void tcp_client_thread(void *arg)
 							else if((tcp_client_recvbuf[2]==0x12)&&(tcp_client_recvbuf[1]==0x12))//插卡数据包
 							{
 								_ucNo = tcp_client_recvbuf[tcp_client_recvbuf[1]-2];	//读取逻辑地址 由于在未尾增加通信码，所以逻辑地址在倒数第二位								
-								printf("插卡数据包 卡号：%02X%02X%02X%02X  ",tcp_client_recvbuf[8],tcp_client_recvbuf[9],tcp_client_recvbuf[10],tcp_client_recvbuf[11]);
+								printf("插卡数据包 卡号：%02X%02X%02X%02X  ",tcp_client_recvbuf[12],tcp_client_recvbuf[13],tcp_client_recvbuf[14],tcp_client_recvbuf[15]);
 								printf("逻辑地址：%02d; ", tcp_client_recvbuf[16]);
 								printf("错误代码：%c%c%c%c; ", tcp_client_recvbuf[4],tcp_client_recvbuf[5],tcp_client_recvbuf[6],tcp_client_recvbuf[7]);
 								printf("通信码%02X \r\n",tcp_client_recvbuf[17]);
 								ser_Date[0] = 0xBB;	//标志有数据 异常
-								ser_Date[1] = tcp_client_recvbuf[16];	//逻辑地址
-								ser_Date[2] = tcp_client_recvbuf[4];	//错误代码
-								ser_Date[3] = tcp_client_recvbuf[5];	//错误代码
-								ser_Date[4] = tcp_client_recvbuf[6];	//错误代码
-								ser_Date[5] = tcp_client_recvbuf[7];	//错误代码
-								ser_Date[6] = tcp_client_recvbuf[17];	//通信码
-								ser_Date[9] = _ucNo;	//逻辑地址
+								ser_Date[1] = _ucNo;	//逻辑地址
+								ser_Date[2] = tcp_client_recvbuf[12];	//卡号1
+								ser_Date[3] = tcp_client_recvbuf[13];	//卡号2
+								ser_Date[4] = tcp_client_recvbuf[14];	//卡号3
+								ser_Date[5] = tcp_client_recvbuf[15];	//卡号4
+								ser_Date[6] = (tcp_client_recvbuf[5]-0x30)*10+(tcp_client_recvbuf[7]-0x30);	//错误代码"Ex0x"
+								ser_Date[7] = tcp_client_recvbuf[17];	//通信码
 								ser_err=OSQPost(q_msg_ser,ser_Date);	//发送队列
 								if(ser_err!=OS_ERR_NONE) 	myfree(SRAMIN,ser_Date);	//发送失败,释放内存							
 							}
