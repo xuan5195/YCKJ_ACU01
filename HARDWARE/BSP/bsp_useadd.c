@@ -127,7 +127,8 @@ void PowerUPLogitADDCheck(void)
 				KJ_Versions[i] = Can_WriteLogitADD(i,(uint8_t *)Physical_Temp);
 				if(KJ_Versions[i] != 0x00)	//分别逻辑地址成功
 				{
-					++g_RUNDate[0][0]; g_RUNDate[i][0] = 0xAA;	//总数+1；该地址使用；
+					++g_RUNDate[0][0]; 		//总数+1；该地址使用；
+					g_RUNDate[i][0] = g_RUNDate[i][0]|0x80;	//总数+1；该地址使用；
 					g_RUNDate[i][3] = Physical_Temp[0]; g_RUNDate[i][4] = Physical_Temp[1];	//卡机SN
 					g_RUNDate[i][5] = Physical_Temp[2]; g_RUNDate[i][6] = Physical_Temp[3];
 					printf("Ver[%02d]=%02X\r\n",i,KJ_Versions[i]);               
@@ -138,7 +139,8 @@ void PowerUPLogitADDCheck(void)
 					KJ_Versions[i] = Can_WriteLogitADD(i,(uint8_t *)Physical_Temp);
 					if(KJ_Versions[i] != 0x00)	//分别逻辑地址成功
 					{
-						++g_RUNDate[0][0]; g_RUNDate[i][0] = 0xAA;	//总数+1；该地址使用；
+						++g_RUNDate[0][0]; 		//总数+1；该地址使用；
+						g_RUNDate[i][0] = g_RUNDate[i][0]|0x80;	//总数+1；该地址使用；
 						g_RUNDate[i][3] = Physical_Temp[0]; g_RUNDate[i][4] = Physical_Temp[1];	//卡机SN
 						g_RUNDate[i][5] = Physical_Temp[2]; g_RUNDate[i][6] = Physical_Temp[3];
 						printf("Ver[%02d]=%02X,分配成功！\r\n",i,KJ_Versions[i]);               
@@ -155,33 +157,33 @@ void PowerUPLogitADDCheck(void)
 	}
 }
 
-//用于通电过程掉电，重复注册；
-void LogitADDWrite(uint8_t _AddDat)
-{
-	uint8_t i;
-	uint16_t Temp;
-	uint8_t Physical_Temp[5]={0};
-	i = _AddDat;
-	Temp = (Start_ADD + ( i * 5 ))|Logic_ADD ;	//每组的起始地址  逻辑地址数据存储地址
-	if( AT24CXX_ReadOneByte(Temp) == i )		//表明本地址使用了；
-	{
-		AT24CXX_Read( (Temp + 1),(uint8_t *)Physical_Temp, 0x04 );	//读取物理地址
-		printf("++起始地址:%d;  逻辑地址:%d;  物理地址：%02X%02X%02X%02X;  \r\n",Temp,i,Physical_Temp[0],Physical_Temp[1],Physical_Temp[2],Physical_Temp[3]);
-		KJ_Versions[i] = WriteLogitADD(i,(uint8_t *)Physical_Temp);
-		if(KJ_Versions[i] != 0x00)	//分别逻辑地址成功
-		//if(WriteLogitADD(i,(uint8_t *)Physical_Temp) != 0x00)	//分别逻辑地址成功
-		{
-			++g_RUNDate[0][0]; g_RUNDate[i][0] = 0xAA;	//总数+1；该地址使用；
-			g_RUNDate[i][3] = Physical_Temp[0]; g_RUNDate[i][4] = Physical_Temp[1];	//卡机SN
-			g_RUNDate[i][5] = Physical_Temp[2]; g_RUNDate[i][6] = Physical_Temp[3];
-			printf("分配成功！\r\n");               
-		}
-		else
-		{
-			printf("分配失败！\r\n");               
-		}
-	}
-}
+////用于通电过程掉电，重复注册；
+//void LogitADDWrite(uint8_t _AddDat)
+//{
+//	uint8_t i;
+//	uint16_t Temp;
+//	uint8_t Physical_Temp[5]={0};
+//	i = _AddDat;
+//	Temp = (Start_ADD + ( i * 5 ))|Logic_ADD ;	//每组的起始地址  逻辑地址数据存储地址
+//	if( AT24CXX_ReadOneByte(Temp) == i )		//表明本地址使用了；
+//	{
+//		AT24CXX_Read( (Temp + 1),(uint8_t *)Physical_Temp, 0x04 );	//读取物理地址
+//		printf("++起始地址:%d;  逻辑地址:%d;  物理地址：%02X%02X%02X%02X;  \r\n",Temp,i,Physical_Temp[0],Physical_Temp[1],Physical_Temp[2],Physical_Temp[3]);
+//		KJ_Versions[i] = WriteLogitADD(i,(uint8_t *)Physical_Temp);
+//		if(KJ_Versions[i] != 0x00)	//分别逻辑地址成功
+//		//if(WriteLogitADD(i,(uint8_t *)Physical_Temp) != 0x00)	//分别逻辑地址成功
+//		{
+//			++g_RUNDate[0][0]; g_RUNDate[i][0] = 0xAA;	//总数+1；该地址使用；
+//			g_RUNDate[i][3] = Physical_Temp[0]; g_RUNDate[i][4] = Physical_Temp[1];	//卡机SN
+//			g_RUNDate[i][5] = Physical_Temp[2]; g_RUNDate[i][6] = Physical_Temp[3];
+//			printf("分配成功！\r\n");               
+//		}
+//		else
+//		{
+//			printf("分配失败！\r\n");               
+//		}
+//	}
+//}
 
 void Read_RFID_Key(uint8_t *RFID_Key_Temp)
 {

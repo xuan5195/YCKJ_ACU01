@@ -289,11 +289,11 @@ void led_task(void *pdata)
 		{   //2.轮循方式取数据
 			ReadRunningData(Led_TaskCount+1);			
 
-			if(g_RUNDate[Led_TaskCount][1] == 0xAA)	//有数据
+			if((g_RUNDate[Led_TaskCount][0]&0x03) != 0x00)	//有数据
 			{
 				g_SendDate[0] = 0xAA;	//标志为使用
-				if(g_RUNDate[Led_TaskCount][2] == 0x05)		g_SendDate[1] = 0x11;	//插卡
-				else if(g_RUNDate[Led_TaskCount][2] == 0x06)g_SendDate[1] = 0x13;	//拔卡
+				if((g_RUNDate[Led_TaskCount][0]&0x03) == 0x01)		g_SendDate[1] = 0x11;	//插卡
+				else if((g_RUNDate[Led_TaskCount][0]&0x03) == 0x02)g_SendDate[1] = 0x13;	//拔卡
 				g_SendDate[2] = g_RUNDate[Led_TaskCount][3];	//卡机SN
 				g_SendDate[3] = g_RUNDate[Led_TaskCount][4];	//卡机SN
 				g_SendDate[4] = g_RUNDate[Led_TaskCount][5];	//卡机SN
@@ -310,7 +310,7 @@ void led_task(void *pdata)
 				g_SendDate[15] = g_RUNDate[Led_TaskCount][15];//通信码
 				q_err=OSQPost(q_msg,g_SendDate);	//发送队列
 				if(q_err!=OS_ERR_NONE) 	myfree(SRAMIN,g_SendDate);	//发送失败,释放内存
-				g_RUNDate[Led_TaskCount][1] = 0xDD;					
+				g_RUNDate[Led_TaskCount][1] = g_RUNDate[Led_TaskCount][1]&(~0x03);	//发送完成，清数据标志位					
 			}
 
 		}
