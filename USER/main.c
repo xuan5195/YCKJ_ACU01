@@ -24,7 +24,7 @@
 #include "bsp_can.h"
 #include "bsp_canapp.h"
 
-uint8_t g_RUNDate[32][17]={0};    		//运行数据；
+uint8_t g_RUNDate[32][16]={0};    		//运行数据；
 uint8_t KJ_Versions[32]={0};			//卡机版本号缓存
 uint8_t g_PowerUpFlag=0;				//上电标志，0xAA上电完成
 uint8_t g_lwipADD[4]={0};				//远端IP地址
@@ -64,12 +64,13 @@ void led_task(void *pdata); 		//任务函数
 OS_STK START_TASK_STK[START_STK_SIZE];	//任务堆栈
 void start_task(void *pdata);			//任务函数 
 
+#define MsgGrp_SIZE		64			//消息队列大小
 
 //OS_TMR   * tmr1;			//软件定时器1
 OS_EVENT * q_msg_ser;		//消息队列 服务器回复数据
 OS_EVENT * q_msg;			//消息队列
-void * MsgGrp_ser[100];		//消息队列存储地址,最大支持100个消息	 服务器回复数据
-void * MsgGrp[100];			//消息队列存储地址,最大支持100个消息	
+void * MsgGrp_ser[MsgGrp_SIZE];		//消息队列存储地址,最大支持100个消息	 服务器回复数据
+void * MsgGrp[MsgGrp_SIZE];			//消息队列存储地址,最大支持100个消息	
 
  int main(void)
  {	 
@@ -114,8 +115,8 @@ void start_task(void *pdata)
 	OS_CPU_SR cpu_sr;
 	pdata = pdata ;
 	
-	q_msg_ser=OSQCreate(&MsgGrp_ser[0],100);	//创建消息队列 服务器回复
-	q_msg=OSQCreate(&MsgGrp[0],100);	//创建消息队列
+	q_msg_ser = OSQCreate(&MsgGrp_ser[0],MsgGrp_SIZE);	//创建消息队列 服务器回复
+	q_msg = OSQCreate(&MsgGrp[0],MsgGrp_SIZE);	//创建消息队列
 	
 	OSStatInit();  			//初始化统计任务
 	OS_ENTER_CRITICAL();  	//关中断

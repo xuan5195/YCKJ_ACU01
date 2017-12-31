@@ -20,7 +20,7 @@ u8 tcp_client_heartbeatsendbuf[32]=	//TCP客户端发送心跳包数据缓冲区
 u8 tcp_client_cardsendbuf[0x21]=	    //TCP客户端发送卡数据包数据缓冲区
 {0xF3,0x21,0x11,0x31,0x30,0x30,0x30,0x30,0x30,0x30,0x2D,0x62,0x37,0x36,0x31,0x63,0x32,0x62,0x30,0xD1,0xD2,0xD3,0xD4,0xC1,0xC2,0xC3,0xC4,0xD9,0x4E,0x20,0x00,0x00};	
 u8 tcp_client_flag;		//TCP客户端数据发送标志位
-extern uint8_t g_RUNDate[32][17];    //运行数据；
+extern uint8_t g_RUNDate[32][16];    //运行数据；
 extern uint8_t KJ_Versions[32];	//卡机版本号
 
 uint8_t g_LockFlag=0;
@@ -165,25 +165,24 @@ static void tcp_client_thread(void *arg)
 						if(SendRecvCount>0)	SendRecvCount--;
 						if(tcp_client_recvbuf[3]==0x00)	//异常回复
 						{
-							if(tcp_client_recvbuf[2]==0x02)
+							if(tcp_client_recvbuf[2]==0x02)//心跳包
 							{
 								_ucNo = tcp_client_recvbuf[tcp_client_recvbuf[1]-1];	//读取逻辑地址 
-								g_LockFlag = _ucNo;
-								g_RUNDate[_ucNo][0] = 0x55;
-								g_RUNDate[_ucNo][1] = tcp_client_recvbuf[2];	//心跳包回复标示 0x02
-								g_RUNDate[_ucNo][7] = tcp_client_recvbuf[4];	//"E" 0x45
-								g_RUNDate[_ucNo][8] = tcp_client_recvbuf[5];
-								g_RUNDate[_ucNo][9] = tcp_client_recvbuf[6];
-								g_RUNDate[_ucNo][10] = tcp_client_recvbuf[7];
-								g_RUNDate[_ucNo][15] = 0;// 无通信码
-								g_LockFlag = 0x00;
+								printf("心跳包 卡机：%02X%02X%02X%02X  ",tcp_client_recvbuf[8],tcp_client_recvbuf[9],tcp_client_recvbuf[10],tcp_client_recvbuf[11]);
+								printf("逻辑地址：%02d; ", _ucNo);
+								printf("错误代码：%c%c%c%c; ", tcp_client_recvbuf[4],tcp_client_recvbuf[5],tcp_client_recvbuf[6],tcp_client_recvbuf[7]);
+								ser_Date[0] = 0x55;	//标志心跳包 异常  卡机异常
+								ser_Date[1] = _ucNo;	//逻辑地址
+								ser_Date[2] = tcp_client_recvbuf[4];	//错误代码//"E" 0x45
+								ser_Date[3] = tcp_client_recvbuf[5];	//错误代码
+								ser_Date[4] = tcp_client_recvbuf[6];	//错误代码
+								ser_Date[5] = tcp_client_recvbuf[7];	//错误代码
+								ser_err = OSQPost(q_msg_ser,ser_Date);	//发送队列
+								if(ser_err!=OS_ERR_NONE) 	myfree(SRAMIN,ser_Date);	//发送失败,释放内存							
 							}								
 							else if((tcp_client_recvbuf[2]==0x12)&&(tcp_client_recvbuf[1]==0x12))//插卡数据包
 							{
 								_ucNo = tcp_client_recvbuf[tcp_client_recvbuf[1]-2];	//读取逻辑地址 由于在未尾增加通信码，所以逻辑地址在倒数第二位								
-								g_LockFlag = _ucNo;
-								g_RUNDate[_ucNo][0] = 0xAA;
-								g_LockFlag = 0x00;
 								printf("插卡数据包 卡号：%02X%02X%02X%02X  ",tcp_client_recvbuf[8],tcp_client_recvbuf[9],tcp_client_recvbuf[10],tcp_client_recvbuf[11]);
 								printf("逻辑地址：%02d; ", tcp_client_recvbuf[16]);
 								printf("错误代码：%c%c%c%c; ", tcp_client_recvbuf[4],tcp_client_recvbuf[5],tcp_client_recvbuf[6],tcp_client_recvbuf[7]);
@@ -206,9 +205,6 @@ static void tcp_client_thread(void *arg)
 								_ucNo = tcp_client_recvbuf[tcp_client_recvbuf[1]-1];	//读取逻辑地址 								
 							else
 								_ucNo = tcp_client_recvbuf[tcp_client_recvbuf[1]-2];	//读取逻辑地址 由于在未尾增加通信码，所以逻辑地址在倒数第二位								
-							g_LockFlag = _ucNo;
-							g_RUNDate[_ucNo][0] = 0xAA;
-							g_LockFlag = 0x00;
 							if((tcp_client_recvbuf[1]==0x0C)&&(tcp_client_recvbuf[2]==0x02)&&(tcp_client_recvbuf[4]==0xAA))//心跳包
 							{
 								g_CostNum = tcp_client_recvbuf[10];	//流量计脉冲数 每升水计量周期
@@ -230,7 +226,6 @@ static void tcp_client_thread(void *arg)
 								ser_Date[8] = tcp_client_recvbuf[15];	//卡内金额3 高位
 								ser_Date[9] = _ucNo;	//逻辑地址
 								ser_Date[10] = tcp_client_recvbuf[17];	//通信码
-								//ser_Date[9] = 0x00;	//标志数据锁 解锁
 								ser_err=OSQPost(q_msg_ser,ser_Date);	//发送队列
 								if(ser_err!=OS_ERR_NONE) 	myfree(SRAMIN,ser_Date);	//发送失败,释放内存							
 							}

@@ -460,11 +460,6 @@
               <FilePath>..\HARDWARE\BSP\bsp_crc8.c</FilePath>
             </File>
             <File>
-              <FileName>bsp_powerbus.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\HARDWARE\BSP\bsp_powerbus.c</FilePath>
-            </File>
-            <File>
               <FileName>bsp_myiic.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\HARDWARE\BSP\bsp_myiic.c</FilePath>
@@ -498,6 +493,11 @@
               <FileName>bsp_canapp.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\HARDWARE\BSP\bsp_canapp.c</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_powerbus.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\BSP\bsp_powerbus.c</FilePath>
             </File>
           </Files>
         </Group>

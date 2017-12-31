@@ -12,7 +12,7 @@
 #include "bsp_canapp.h"
 
 #define ADD_SIZE	32
-extern uint8_t g_RUNDate[32][17];    //运行数据；
+extern uint8_t g_RUNDate[32][16];    //运行数据；
 extern uint8_t PBus_Count;
 extern uint8_t PBusDat[16];
 extern uint8_t KJ_Versions[32];	//卡机版本号
@@ -124,7 +124,6 @@ void PowerUPLogitADDCheck(void)
 			}
 			else
 			{
-				//KJ_Versions[i] = WriteLogitADD(i,(uint8_t *)Physical_Temp);
 				KJ_Versions[i] = Can_WriteLogitADD(i,(uint8_t *)Physical_Temp);
 				if(KJ_Versions[i] != 0x00)	//分别逻辑地址成功
 				{
@@ -136,7 +135,6 @@ void PowerUPLogitADDCheck(void)
 				else
 				{
 					printf("\r\n分配失败！  ");               
-					//KJ_Versions[i] = WriteLogitADD(i,(uint8_t *)Physical_Temp);
 					KJ_Versions[i] = Can_WriteLogitADD(i,(uint8_t *)Physical_Temp);
 					if(KJ_Versions[i] != 0x00)	//分别逻辑地址成功
 					{

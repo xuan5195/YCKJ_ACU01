@@ -14,7 +14,7 @@
 #include "bsp_canapp.h"
 
 uint8_t Overflow_Flag;	//等待超时标志
-extern uint8_t g_RUNDate[32][17];    //运行数据；
+extern uint8_t g_RUNDate[32][16];    //运行数据；
 extern uint8_t PBus_Count;
 extern uint8_t PBusDat[16];
 extern uint8_t g_LockFlag;
@@ -410,19 +410,19 @@ void ReadRunningData(uint8_t _no)
 			}
 		}
 	}
-	else if(g_RUNDate[_no][0] == 0x55)	//异常
-	{
-		LED1 = !LED1;//LED1 = 0;
-		TempBuff[0] = _no;	//逻辑地址
-		TempBuff[1] = g_RUNDate[_no][7];	//异常代码"E"
-		TempBuff[2] = g_RUNDate[_no][8];	//异常代码高位
-		TempBuff[3] = g_RUNDate[_no][9];	//异常代码
-		TempBuff[4] = g_RUNDate[_no][10];	//异常代码低位
-		TempBuff[5] = g_RUNDate[_no][15];	//通信码
-		Can_SendPBus_ErrCom((uint8_t *)TempBuff);
-		//uDat = SendPBus_ErrCom((uint8_t *)TempBuff);
-		//if( uDat == 0x00 )		uDat = SendPBus_ErrCom((uint8_t *)TempBuff);
-	}
+//	else if(g_RUNDate[_no][0] == 0x55)	//异常
+//	{
+//		LED1 = !LED1;//LED1 = 0;
+//		TempBuff[0] = _no;	//逻辑地址
+//		TempBuff[1] = g_RUNDate[_no][7];	//异常代码"E"
+//		TempBuff[2] = g_RUNDate[_no][8];	//异常代码高位
+//		TempBuff[3] = g_RUNDate[_no][9];	//异常代码
+//		TempBuff[4] = g_RUNDate[_no][10];	//异常代码低位
+//		TempBuff[5] = g_RUNDate[_no][15];	//通信码
+//		Can_SendPBus_ErrCom((uint8_t *)TempBuff);
+//		//uDat = SendPBus_ErrCom((uint8_t *)TempBuff);
+//		//if( uDat == 0x00 )		uDat = SendPBus_ErrCom((uint8_t *)TempBuff);
+//	}
 }
 
 //轮循方式取通信数据
@@ -472,7 +472,7 @@ void WriteRFIDData(uint8_t *_WriteDat)
 		Runningbuf[2],Runningbuf[3],Runningbuf[4],Runningbuf[5],Runningbuf[6],Runningbuf[7]);
 		Package_Send(0x09,(u8 *)Runningbuf);
 	}
-	else if(_WriteDat[0] == 0xBB)	//异常数据
+	else if(_WriteDat[0] == 0xBB)	////插卡数据包 异常数据 与卡相关
 	{
 		Runningbuf[0] = _no;	//逻辑地址
 		Runningbuf[1] = _WriteDat[2];	//错误代码"E"
@@ -480,6 +480,16 @@ void WriteRFIDData(uint8_t *_WriteDat)
 		Runningbuf[3] = _WriteDat[4];	//错误代码中位
 		Runningbuf[4] = _WriteDat[5];	//错误代码低位
 		Runningbuf[5] = _WriteDat[6];	//通信码
+		Package_Send(0x11,(u8 *)Runningbuf);
+	}
+	else if(_WriteDat[0] == 0x55)	////心跳包 异常数据 与卡机相关
+	{
+		Runningbuf[0] = _WriteDat[1];	//逻辑地址
+		Runningbuf[1] = _WriteDat[2];	//错误代码"E"
+		Runningbuf[2] = _WriteDat[3];	//错误代码高位
+		Runningbuf[3] = _WriteDat[4];	//错误代码中位
+		Runningbuf[4] = _WriteDat[5];	//错误代码低位
+		Runningbuf[5] = 0;	//通信码
 		Package_Send(0x11,(u8 *)Runningbuf);
 	}
 	
