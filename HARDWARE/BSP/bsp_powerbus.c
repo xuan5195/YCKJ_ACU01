@@ -17,6 +17,10 @@ uint8_t Overflow_Flag;	//等待超时标志
 extern uint8_t g_RUNDate[32][14];    //运行数据；
 extern uint8_t KJ_Versions[32];				//卡机版本号
 
+extern uint8_t g_CostNum;		//流量计脉冲数 每升水计量周期
+extern uint8_t g_WaterCost;		//WaterCost=水费 最小扣款金额 0.005元
+
+
 //未注册广播 
 void UnregisteredBroadcast(void)
 {
@@ -390,6 +394,14 @@ void WriteRFIDData(uint8_t *_WriteDat)
 		Runningbuf[5] = 0;	//通信码
 		Package_Send(0x11,(u8 *)Runningbuf);
 	}
+	else if(_WriteDat[0] == 0xCC)	////心跳包 正常数据
+	{
+		g_RUNDate[_WriteDat[7]][0] = 0x80;	//将卡机写为正常,写为正常后，插卡、拔卡数据包才有效。
+		printf("\r\n服务器 心跳包 正常:%2d,水费:%2d,脉冲数:%2d;\r\n",_WriteDat[1],_WriteDat[5],_WriteDat[6]); 
+		Runningbuf[0] = _WriteDat[7];	//逻辑地址
+		g_WaterCost = _WriteDat[5];	//WaterCost=水费 最小扣款金额 0.005元
+		g_CostNum = _WriteDat[6];	//流量计脉冲数 每升水计量周期
+	}
 	
 	Overflow_Flag=10;
 	while((res==0)&& (Overflow_Flag>0) )//接收到有数据
@@ -398,11 +410,11 @@ void WriteRFIDData(uint8_t *_WriteDat)
 		OSTimeDlyHMSM(0, 0, 0, 5);
 		Overflow_Flag--;
 	}
-	if(res)
-	{
-		printf("%02X %02X %02X %02X %02X %02X %02X %02X\r\n",Recebuf[0],Recebuf[1],\
-		Recebuf[2],Recebuf[3],Recebuf[4],Recebuf[5],Recebuf[6],Recebuf[7]);
-	}
+//	if(res)
+//	{
+//		printf("%02X %02X %02X %02X %02X %02X %02X %02X\r\n",Recebuf[0],Recebuf[1],\
+//		Recebuf[2],Recebuf[3],Recebuf[4],Recebuf[5],Recebuf[6],Recebuf[7]);
+//	}
 }
 
 

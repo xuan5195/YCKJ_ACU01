@@ -29,9 +29,6 @@ extern uint16_t g_lwipPort;		//远端端口号
 extern uint8_t g_ACUSN[4];		//区域控制器SN 4位
 extern uint8_t g_ACUAdd[16];	//通信码16位
 
-extern uint8_t g_CostNum;		//流量计脉冲数 每升水计量周期
-extern uint8_t g_WaterCost;		//WaterCost=水费 最小扣款金额 0.005元
-
 extern OS_EVENT * q_msg;			//消息队列
 extern OS_EVENT * q_msg_ser;		//消息队列 服务器回复数据
 
@@ -119,7 +116,7 @@ static void tcp_client_thread(void *arg)
 					}
 					tcp_client_flag &= ~LWIP_SEND_HeartbeatDATA;	//发送完成，清标志位
 				}
-				{
+				{	//插卡、拔卡数据数据包发送
 					p=OSQPend(q_msg,100,&p_err);//请求消息队列
 					if((OS_ERR_NONE==p_err)&&(p!=NULL))
 					{
@@ -206,8 +203,18 @@ static void tcp_client_thread(void *arg)
 								_ucNo = tcp_client_recvbuf[tcp_client_recvbuf[1]-2];	//读取逻辑地址 由于在未尾增加通信码，所以逻辑地址在倒数第二位								
 							if((tcp_client_recvbuf[1]==0x0C)&&(tcp_client_recvbuf[2]==0x02)&&(tcp_client_recvbuf[4]==0xAA))//心跳包
 							{
-								g_CostNum = tcp_client_recvbuf[10];	//流量计脉冲数 每升水计量周期
-								g_WaterCost = tcp_client_recvbuf[9];//WaterCost=水费 最小扣款金额 0.005元
+//								g_CostNum = tcp_client_recvbuf[10];	//流量计脉冲数 每升水计量周期
+//								g_WaterCost = tcp_client_recvbuf[9];//WaterCost=水费 最小扣款金额 0.005元
+								ser_Date[0] = 0xCC;	//标志心跳包
+								ser_Date[1] = tcp_client_recvbuf[5];	//卡机SN 1
+								ser_Date[2] = tcp_client_recvbuf[6];	//卡机SN 2
+								ser_Date[3] = tcp_client_recvbuf[7];	//卡机SN 3
+								ser_Date[4] = tcp_client_recvbuf[8];	//卡机SN 4
+								ser_Date[5] = tcp_client_recvbuf[9];	//WaterCost=水费 最小扣款金额 0.005元
+								ser_Date[6] = tcp_client_recvbuf[10];	//流量计脉冲数 每升水计量周期
+								ser_Date[7] = _ucNo;	//逻辑地址
+								ser_err=OSQPost(q_msg_ser,ser_Date);	//发送队列
+								if(ser_err!=OS_ERR_NONE) 	myfree(SRAMIN,ser_Date);	//发送失败,释放内存							
 							}
 							else if((tcp_client_recvbuf[2]==0x12)&&(tcp_client_recvbuf[1]==0x12))//插卡数据包
 							{
