@@ -94,7 +94,7 @@ static void tcp_client_thread(void *arg)
 					if(i_SendCount>=BUSNUM_SIZE)	i_SendCount = 1;
 					else							i_SendCount++;
 					printf("\r\n心跳包：%2d\r\n",i_SendCount);
-					if((g_RUNDate[i_SendCount][0]&0xF0) != 0x00)
+					if((g_RUNDate[i_SendCount][0]&0xC0) != 0x00)	//卡机存在 发送心跳动包
 					{
 						if(SendRecvCount<200)	SendRecvCount++;
 						tcp_client_heartbeatsendbuf[23] = g_RUNDate[i_SendCount][1]; tcp_client_heartbeatsendbuf[24] = g_RUNDate[i_SendCount][2];   //卡机SN
@@ -108,7 +108,7 @@ static void tcp_client_thread(void *arg)
                         err = netconn_write(tcp_clientconn ,tcp_client_heartbeatsendbuf,tcp_client_heartbeatsendbuf[1],NETCONN_COPY); //发送tcp_server_sentbuf中的数据
 						if(err != ERR_OK)		printf("发送失败\r\n");					
 					}
-					else
+					else if((g_RUNDate[i_SendCount][0]&0x20) == 0x20)	//卡机失联 发送失联心跳动包
 					{
 						tcp_client_heartbeatsendbuf[30] = i_SendCount;	//卡机逻辑地址
                         err = netconn_write(tcp_clientconn ,tcp_client_heartbeatsendbuf,tcp_client_heartbeatsendbuf[1],NETCONN_COPY); //发送tcp_server_sentbuf中的数据
@@ -130,6 +130,7 @@ static void tcp_client_thread(void *arg)
 						tcp_client_cardsendbuf[30] = p[12];	//卡金额
 						tcp_client_cardsendbuf[31] = p[14];	//卡机逻辑地址
 						tcp_client_cardsendbuf[32] = p[15];	//通信码
+						printf("\r\n插卡、拔卡数据包发送\r\n");
 						err = netconn_write(tcp_clientconn ,tcp_client_cardsendbuf,tcp_client_cardsendbuf[1],NETCONN_COPY); //发送tcp_server_sentbuf中的数据
 						if(err != ERR_OK)		printf("发送失败\r\n");
 					}

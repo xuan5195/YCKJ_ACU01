@@ -24,7 +24,7 @@
 #include "bsp_can.h"
 #include "bsp_canapp.h"
 
-uint8_t g_RUNDate[32][14]={0};    		//运行数据；
+uint8_t g_RUNDate[35][14]={0};    		//运行数据；
 uint8_t KJ_Versions[32]={0};			//卡机版本号缓存
 uint8_t g_PowerUpFlag=0;				//上电标志，0xAA上电完成
 uint8_t g_lwipADD[4]={0};				//远端IP地址
@@ -321,7 +321,7 @@ void led_task(void *pdata)
 		}
 		myfree(SRAMIN,p);
 
-		if( Led_TaskCount >= (BUSNUM_SIZE+1) )    
+		if( Led_TaskCount > (BUSNUM_SIZE+1) )    
 		{   
 			printf("\r\n\r\n");    	Led_TaskCount = 0;  
 			if(CycleCount<50)		CycleCount++;	

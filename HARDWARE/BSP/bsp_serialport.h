@@ -2,8 +2,8 @@
 #define __BSP_SERIALPORT_H	 
 #include "sys.h"
 
-#define VersionNo 	0xC1	//区域固件版本号
-#define TestFlag	1		//测试标志
+#define VersionNo 	0x01	//区域固件版本号
+#define TestFlag	0		//测试标志
 //#define lwipTestFlag	1	//测试标志
 
 
