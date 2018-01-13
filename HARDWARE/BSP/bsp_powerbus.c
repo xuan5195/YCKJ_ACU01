@@ -14,8 +14,8 @@
 #include "bsp_canapp.h"
 
 uint8_t Overflow_Flag;	//等待超时标志
-extern uint8_t g_RUNDate[32][14];    //运行数据；
-extern uint8_t KJ_Versions[32];				//卡机版本号
+extern uint8_t g_RUNDate[BUSNUM_SIZE+1][14];    //运行数据；
+extern uint8_t KJ_Versions[BUSNUM_SIZE];				//卡机版本号
 
 extern uint8_t g_CostNum;		//流量计脉冲数 每升水计量周期
 extern uint8_t g_WaterCost;		//WaterCost=水费 最小扣款金额 0.005元

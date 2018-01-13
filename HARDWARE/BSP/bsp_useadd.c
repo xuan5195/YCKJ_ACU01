@@ -11,9 +11,9 @@
 #include "includes.h"
 #include "bsp_canapp.h"
 
-#define ADD_SIZE	32
-extern uint8_t g_RUNDate[32][14];    //运行数据；
-extern uint8_t KJ_Versions[32];	//卡机版本号
+#define ADD_SIZE	BUSNUM_SIZE
+extern uint8_t g_RUNDate[BUSNUM_SIZE+1][14];    //运行数据；
+extern uint8_t KJ_Versions[BUSNUM_SIZE];	//卡机版本号
 
 /*
 *********************************************************************************************************
@@ -114,7 +114,7 @@ void PowerUPLogitADDCheck(void)
 		{
 			AT24CXX_Read( (Temp + 1),(uint8_t *)Physical_Temp, 0x04 );	//读取物理地址
             printf("++起始:%03d; 逻辑:%02d; 物理：%02X%02X%02X%02X; ",Temp,i,Physical_Temp[0],Physical_Temp[1],Physical_Temp[2],Physical_Temp[3]);
-			if((Physical_Temp[0]==0x00)&&(Physical_Temp[3]==0x00))
+			if((Physical_Temp[0]==0x00)&&(Physical_Temp[1]==0x00)&&(Physical_Temp[2]==0x00)&&(Physical_Temp[3]==0x00))
 			{
 				printf("\r\n物理地址不能为0x00！清逻辑地址:%d;\r\n",i);               
 				Delete_LogicADD(i);	//分配不成功，清掉这逻辑地址	
@@ -133,7 +133,8 @@ void PowerUPLogitADDCheck(void)
 				}
 				else
 				{
-					printf("\r\n分配失败！  ");               
+					printf("\r\n分配失败！  ");
+					OSTimeDlyHMSM(0, 0, 0, 50);					
 					KJ_Versions[i] = Can_WriteLogitADD(i,(uint8_t *)Physical_Temp);
 					if(KJ_Versions[i] != 0x00)	//分别逻辑地址成功
 					{
@@ -145,7 +146,7 @@ void PowerUPLogitADDCheck(void)
 					}
 					else
 					{
-						printf("二次分配失败！清逻辑地址:%d;\r\n",i);               
+						printf("二次分配失败！\r\n清逻辑地址:%d;\r\n",i);               
 						Delete_LogicADD(i);	//分配不成功，清掉这逻辑地址					
 					}
 				}

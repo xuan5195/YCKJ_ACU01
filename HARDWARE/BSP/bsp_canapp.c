@@ -87,7 +87,8 @@ uint8_t Can_ReadUnregistered(uint8_t *_uBuff)
 	while((res==0)&& (Overflow_Flag>0) )//接收到有数据
 	{
 		res=Can_Receive_Msg(Recebuf);
-		OSTimeDlyHMSM(0, 0, 0, 5);
+		if(res != 0)	continue;
+		OSTimeDlyHMSM(0, 0, 0, 2);
 		Overflow_Flag--;
 	}
 	//printf("- %d;",Overflow_Flag);  

@@ -24,8 +24,8 @@
 #include "bsp_can.h"
 #include "bsp_canapp.h"
 
-uint8_t g_RUNDate[35][14]={0};    		//运行数据；
-uint8_t KJ_Versions[32]={0};			//卡机版本号缓存
+uint8_t g_RUNDate[BUSNUM_SIZE+1][14]={0};    	//运行数据；
+uint8_t KJ_Versions[BUSNUM_SIZE]={0};			//卡机版本号缓存
 uint8_t g_PowerUpFlag=0;				//上电标志，0xAA上电完成
 uint8_t g_lwipADD[4]={0};				//远端IP地址
 uint16_t g_lwipPort=0;					//远端端口号
@@ -204,7 +204,7 @@ void led_task(void *pdata)
 	uint8_t PhysicalADD[4] = {0x00,0x00,0x00,0x00};
     uint8_t u8Temp; //存储临时数据
 	uint8_t Led_TaskCount = 0;
-    uint8_t ucCount = 50;	//上电50秒
+    uint8_t ucCount = 80;	//上电80秒
 	uint8_t CycleCount =0;
 	uint32_t BroadTime=0;
 	
@@ -222,29 +222,30 @@ void led_task(void *pdata)
     OSTimeDlyHMSM(0,0,2,500);  	//上电延时，等待总线上电完成
     PowerUPLogitADDCheck(); 	//上电检测Flash内逻辑地址；
     printf("上电检测Flash内逻辑地址完成! 总线：%2d.\r\n",g_RUNDate[0][0]);  
-	OSTimeDlyHMSM(0,0,0,100);  	//延时100ms
+	OSTimeDlyHMSM(0,0,0,200);  	//延时200ms
 	Can_SendBroadcast_Key((uint8_t *)FM1702_Key);
-    OSTimeDlyHMSM(0,0,0,100);  	//延时100ms
+    OSTimeDlyHMSM(0,0,0,200);  	//延时200ms
+    printf("\r\n未注册广播! \r\n");      
 	Can_UnregisteredBroadcast();   //未注册广播
-    printf("未注册广播! \r\n");      
+    printf("\r\n");      
 	LED0 = 1;LED1 = 1;LED2 = 1;
 	Old_CostNum = g_CostNum;	//流量计脉冲数 每升水计量周期
 	Old_WaterCost = g_WaterCost;//WaterCost=水费 最小扣款金额 0.005元
-	ucCount = ucCount - g_RUNDate[0][0];
-	if((ucCount<20)||(ucCount>50))	ucCount = 20;
-	#if TestFlag
-		ucCount = 10;	//测试使用
-	#endif
+//	ucCount = ucCount - g_RUNDate[0][0];
+//	if((ucCount<20)||(ucCount>50))	ucCount = 20;
+//	#if TestFlag
+//		ucCount = 10;	//测试使用
+//	#endif
     while(ucCount)
     {		
         LED0 = !LED0;LED1 = !LED1;LED2 = !LED2;
         printf("%2d. ",ucCount); 
 		if(Can_ReadUnregistered((uint8_t *)PhysicalADD)!=0x00)  //有数据
 		{
-            printf("物理地址：%02X%02X%02X%02X;",PhysicalADD[0],PhysicalADD[1],PhysicalADD[2],PhysicalADD[3]);   
+            printf("物理：%02X%02X%02X%02X;",PhysicalADD[0],PhysicalADD[1],PhysicalADD[2],PhysicalADD[3]);   
             u8Temp = Distribute_LogicADD((uint8_t *)PhysicalADD);	//分配物理地址
-            printf("逻辑地址:%d;",u8Temp); 
-            if(u8Temp<=32)
+            printf("逻辑:%d;",u8Temp); 
+            if( u8Temp <= ( BUSNUM_SIZE+1 ) )
 			{
 				KJ_Versions[u8Temp] = Can_WriteLogitADD(u8Temp,(uint8_t *)PhysicalADD);
 				if(KJ_Versions[u8Temp]==0x00)	printf("Ver[%02d]=%02X,分配失败！\r\n",u8Temp,KJ_Versions[u8Temp]);

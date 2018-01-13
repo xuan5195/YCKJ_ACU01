@@ -3,7 +3,7 @@
 #include "sys.h"
 
 #define POWERBUS_COM	COM2	//总线串口
-#define	BUSNUM_SIZE		32		//总线从站个数
+#define	BUSNUM_SIZE		80		//总线从站个数
 void UnregisteredBroadcast(void);   //未注册广播
 uint8_t ReadUnregistered(uint8_t *_uBuff);
 void ReadRunningData(uint8_t _no);
