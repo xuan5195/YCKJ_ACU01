@@ -12,7 +12,6 @@
 #include "sram.h"
 #include "malloc.h"
 #include "string.h"
-#include "usmart.h"	
 #include "dm9000.h"
 #include "lwip/netif.h"
 #include "lwip_comm.h"
@@ -23,6 +22,10 @@
 #include "bsp_serialport.h"
 #include "bsp_can.h"
 #include "bsp_canapp.h"
+#include "bsp_spi_flash.h"
+#include "bsp_spi_bus.h"
+#include "common.h"
+#include "ymodem.h"
 
 uint8_t g_RUNDate[BUSNUM_SIZE+1][14]={0};    	//运行数据；
 uint8_t KJ_Versions[BUSNUM_SIZE]={0};			//卡机版本号缓存
@@ -80,13 +83,15 @@ void * MsgGrp[MsgGrp_SIZE];			//消息队列存储地址,最大支持100个消息
  	LED_Init();			    //LED端口初始化
 	CAN_Mode_Init(CAN_SJW_1tq,CAN_BS1_8tq,CAN_BS2_7tq,5,CAN_Mode_Normal);//CAN初始化正常模式,波特率450Kbps    
 
-	 usmart_dev.init(72);	//初始化USMART		 
+	//usmart_dev.init(72);	//初始化USMART		 
  	//FSMC_SRAM_Init();		//初始化外部SRAM
-	my_mem_init(SRAMIN);	//初始化内部内存池
 	//my_mem_init(SRAMEX);	//初始化外部内存池
+	my_mem_init(SRAMIN);	//初始化内部内存池
     printf("Starting Up YCKJ-ACU...\r\n");
 	printf("VersionNo: %02X...\r\n",VersionNo);
 	printf("TestFlag: %d...\r\n",TestFlag);
+	bsp_InitSPIBus();	   	//配置SPI总线
+	bsp_InitSFlash();		//初始化串行Flash. 该函数会识别串行FLASH型号 
 	AT24CXX_Init();			    	//IIC 初始化
 	while(AT24CXX_Check()){};      	//对IIC进行检测
     printf("AT24CXX_Check OK!\r\n");
@@ -134,9 +139,14 @@ void key_task(void *pdata)
     uint8_t PrintfCount;
     uint16_t Key_Task_Count=0,HeartSendCount=0;
 	uint8_t SerialSetFlag=0x00;	//串口设置标志，修改配置后，重启才能与服务器通信	
+        SerialPutString("\r\n================== Main Menu ============================\r\n\n");
+        SerialPutString("  Download Image To the STM32F10x Internal Flash ------- 1\r\n\n");
+        SerialPutString("  Upload Image From the STM32F10x Internal Flash ------- 2\r\n\n");
+        SerialPutString("  Execute The New Program ------------------------------ 3\r\n\n");
 
 	while(1)
 	{
+		SerialDownload();
 		
 		if(g_PowerUpFlag==0x00)	//等待上电初始化完成
 		{
@@ -181,16 +191,16 @@ void key_task(void *pdata)
 			OSTimeDlyHMSM(0,0,0,50);  //延时50ms		
 		}
 		//串口3检测 参数设置
-		ReceiveSerialDat();
-		if( ( 0x80 & g_Serial_Count ) == 0x80 )	//接收到数据
-		{
-			g_Serial_Count = 0x00;
-			SerialSetFlag=0xAA;
-			printf("\r\n串口参数设置，断开与服务器通信，重启区域控制器才能恢复与服务器通信;\r\n"); 
-			tcp_client_flag = tcp_client_flag&(~LWIP_SEND_HeartbeatDATA);
-			//tcp_client_flag = tcp_client_flag&(~LWIP_SEND_DATA);			
-			SendSerialPort((uint8_t *)g_SerialDat);	//回复
-		}
+//		ReceiveSerialDat();
+//		if( ( 0x80 & g_Serial_Count ) == 0x80 )	//接收到数据
+//		{
+//			g_Serial_Count = 0x00;
+//			SerialSetFlag=0xAA;
+//			printf("\r\n串口参数设置，断开与服务器通信，重启区域控制器才能恢复与服务器通信;\r\n"); 
+//			tcp_client_flag = tcp_client_flag&(~LWIP_SEND_HeartbeatDATA);
+//			//tcp_client_flag = tcp_client_flag&(~LWIP_SEND_DATA);			
+//			SendSerialPort((uint8_t *)g_SerialDat);	//回复
+//		}
 	}
 }
 
@@ -261,7 +271,7 @@ void led_task(void *pdata)
 	Can_SendBroadcast_Key((uint8_t *)FM1702_Key);
 	g_PowerUpFlag = 0xAA;	//初始化完成
     printf("\r\n上电检测未注册超时，进入正常待机状态;\r\n"); 
-	IWDG_Init(6,1024);    //与分频数为64,重载值为1024,溢出时间为6s	   
+//	IWDG_Init(6,1024);    //与分频数为64,重载值为1024,溢出时间为6s	   
 	while(1)
 	{
 		IWDG_Feed();	//增加看门狗
