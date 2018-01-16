@@ -3,7 +3,9 @@
 
 #include "bsp_can.h"
 
-extern uint8_t Physical_ADD[4];//物理地址
+extern uint8_t Physical_ADD[4];	//物理地址
+extern uint8_t g_RxMessage[8];	//CAN接收数据
+extern uint8_t g_RxMessFlag;	//CAN接收数据 标志
 
 
 //CAN初始化
@@ -89,8 +91,17 @@ void USB_LP_CAN1_RX0_IRQHandler(void)
   	CanRxMsg RxMessage;
 	int i=0;
     CAN_Receive(CAN1, 0, &RxMessage);
-	for(i=0;i<8;i++)
-	printf("rxbuf[%d]:%d\r\n",i,RxMessage.Data[i]);
+	if(g_RxMessFlag != 0xAA)
+	{
+		g_RxMessFlag = 0xAA;
+		for(i=0;i<8;i++)	{	g_RxMessage[i] = RxMessage.Data[i];	}
+//		printf("\r\nCAN1_RX0_IRQ: %02X%02X%02X%02X%02X%02X%02X%02X\r\n",g_RxMessage[0],g_RxMessage[1],\
+		g_RxMessage[2],g_RxMessage[3],g_RxMessage[4],g_RxMessage[5],g_RxMessage[6],g_RxMessage[7]);
+//		if( g_RxMessage[0] == 0xB3 )
+//		{
+//			
+//		}
+	}
 }
 #endif
 
@@ -105,12 +116,14 @@ u8 Can_Send_Msg(u8* msg,u8 len)
 	CanTxMsg TxMessage;
 	if((msg[0]==0x01)||(msg[0]==0x07)||(msg[0]==0x08)||(msg[0]==0x09))	
 		TxMessage.StdId=0x200|msg[1];	// 标准标识符为0
+	else if( msg[0] == 0xC1 )	//写入逻辑地址将ID提高，优化处理
+		TxMessage.StdId=0x100;
 	else				
 		TxMessage.StdId=0x200;			// 标准标识符为0
 	TxMessage.ExtId=0x1800F001;			// 设置扩展标示符（29位）
 	TxMessage.IDE=0;		// 不使用扩展标识符
 	TxMessage.RTR=0;		// 消息类型为数据帧，一帧8位
-	TxMessage.DLC=len;		// 发送两帧信息
+	TxMessage.DLC=len;		// 帧长度
 	for(i=0;i<8;i++)
 	TxMessage.Data[i]=msg[i];	// 帧信息          
 	mbox= CAN_Transmit(CAN1, &TxMessage);   
@@ -220,7 +233,7 @@ void Package_Send(u8 _mode,u8 *Package_Dat)
     	default:
     		break;
     }
-	printf("CAN_Send:%02X %02X %02X %02X %02X %02X %02X %02X; ",Package_SendBuf[0],Package_SendBuf[1],\
+	printf("CAN_Send:%02X%02X%02X%02X%02X%02X%02X%02X; ",Package_SendBuf[0],Package_SendBuf[1],\
 	Package_SendBuf[2],Package_SendBuf[3],Package_SendBuf[4],Package_SendBuf[5],Package_SendBuf[6],Package_SendBuf[7]);
 	//res = Can_Send_Msg(Package_SendBuf,8);//发送8个字节
 	Can_Send_Msg(Package_SendBuf,8);//发送8个字节

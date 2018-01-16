@@ -27,6 +27,8 @@
 #include "common.h"
 #include "ymodem.h"
 
+uint8_t g_RxMessage[8]={0};	//CAN接收数据
+uint8_t g_RxMessFlag=0;		//CAN接收数据 标志
 uint8_t g_RUNDate[BUSNUM_SIZE+1][14]={0};    	//运行数据；
 uint8_t KJ_Versions[BUSNUM_SIZE]={0};			//卡机版本号缓存
 uint8_t g_PowerUpFlag=0;				//上电标志，0xAA上电完成
@@ -90,8 +92,8 @@ void * MsgGrp[MsgGrp_SIZE];			//消息队列存储地址,最大支持100个消息
     printf("Starting Up YCKJ-ACU...\r\n");
 	printf("VersionNo: %02X...\r\n",VersionNo);
 	printf("TestFlag: %d...\r\n",TestFlag);
-	bsp_InitSPIBus();	   	//配置SPI总线
-	bsp_InitSFlash();		//初始化串行Flash. 该函数会识别串行FLASH型号 
+//	bsp_InitSPIBus();	   	//配置SPI总线
+//	bsp_InitSFlash();		//初始化串行Flash. 该函数会识别串行FLASH型号 
 	AT24CXX_Init();			    	//IIC 初始化
 	while(AT24CXX_Check()){};      	//对IIC进行检测
     printf("AT24CXX_Check OK!\r\n");
@@ -139,14 +141,14 @@ void key_task(void *pdata)
     uint8_t PrintfCount;
     uint16_t Key_Task_Count=0,HeartSendCount=0;
 	uint8_t SerialSetFlag=0x00;	//串口设置标志，修改配置后，重启才能与服务器通信	
-        SerialPutString("\r\n================== Main Menu ============================\r\n\n");
-        SerialPutString("  Download Image To the STM32F10x Internal Flash ------- 1\r\n\n");
-        SerialPutString("  Upload Image From the STM32F10x Internal Flash ------- 2\r\n\n");
-        SerialPutString("  Execute The New Program ------------------------------ 3\r\n\n");
+//        SerialPutString("\r\n================== Main Menu ============================\r\n\n");
+//        SerialPutString("  Download Image To the STM32F10x Internal Flash ------- 1\r\n\n");
+//        SerialPutString("  Upload Image From the STM32F10x Internal Flash ------- 2\r\n\n");
+//        SerialPutString("  Execute The New Program ------------------------------ 3\r\n\n");
 
 	while(1)
 	{
-		SerialDownload();
+//		SerialDownload();
 		
 		if(g_PowerUpFlag==0x00)	//等待上电初始化完成
 		{
@@ -249,12 +251,12 @@ void led_task(void *pdata)
     while(ucCount)
     {		
         LED0 = !LED0;LED1 = !LED1;LED2 = !LED2;
-        printf("%2d. ",ucCount); 
+        printf("%02d. ",ucCount); 
 		if(Can_ReadUnregistered((uint8_t *)PhysicalADD)!=0x00)  //有数据
 		{
             printf("物理：%02X%02X%02X%02X;",PhysicalADD[0],PhysicalADD[1],PhysicalADD[2],PhysicalADD[3]);   
             u8Temp = Distribute_LogicADD((uint8_t *)PhysicalADD);	//分配物理地址
-            printf("逻辑:%d;",u8Temp); 
+            printf("逻辑:%0d;",u8Temp); 
             if( u8Temp <= ( BUSNUM_SIZE+1 ) )
 			{
 				KJ_Versions[u8Temp] = Can_WriteLogitADD(u8Temp,(uint8_t *)PhysicalADD);
@@ -262,7 +264,8 @@ void led_task(void *pdata)
 				else							printf("Ver[%02d]=%02X,分配成功！\r\n",u8Temp,KJ_Versions[u8Temp]);
 			}
 		}
-		ucCount--;		
+		ucCount--;
+		OSTimeDlyHMSM(0, 0, 0, 5);		
 	}
 	LED0 = 0;LED1 = 1;LED2 = 1;
 	OSTimeDlyHMSM(0,0,0,200);  		

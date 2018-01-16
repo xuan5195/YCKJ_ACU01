@@ -133,7 +133,7 @@ void PowerUPLogitADDCheck(void)
 				}
 				else
 				{
-					printf("\r\n分配失败！  ");
+					printf("------分配失败!\r\n");
 					OSTimeDlyHMSM(0, 0, 0, 50);					
 					KJ_Versions[i] = Can_WriteLogitADD(i,(uint8_t *)Physical_Temp);
 					if(KJ_Versions[i] != 0x00)	//分别逻辑地址成功
@@ -146,13 +146,13 @@ void PowerUPLogitADDCheck(void)
 					}
 					else
 					{
-						printf("二次分配失败！\r\n清逻辑地址:%d;\r\n",i);               
+						printf("二次分配失败！\r\n----------------------------------清逻辑地址:%d;----------------------\r\n",i);               
 						Delete_LogicADD(i);	//分配不成功，清掉这逻辑地址					
 					}
 				}
 			}
 		}
-		OSTimeDlyHMSM(0,0,0,5);
+		OSTimeDlyHMSM(0,0,0,200);
 	}
 }
 
@@ -186,52 +186,52 @@ void PowerUPLogitADDCheck(void)
 
 void Read_RFID_Key(uint8_t *RFID_Key_Temp)
 {
-	AT24CXX_Read( 230,(uint8_t *)RFID_Key_Temp, 0x07 );	//读取RFID_Key数据
+	AT24CXX_Read( 930,(uint8_t *)RFID_Key_Temp, 0x07 );	//读取RFID_Key数据
 }
 
 void Write_RFID_Key(uint8_t *RFID_Key_Temp)//RFID_Key数据
 {
-	AT24CXX_WriteOneByte( 230, RFID_Key_Temp[0] );            
-	AT24CXX_WriteOneByte( 231, RFID_Key_Temp[1] );            
-	AT24CXX_WriteOneByte( 232, RFID_Key_Temp[2] );            
-	AT24CXX_WriteOneByte( 233, RFID_Key_Temp[3] );            
-	AT24CXX_WriteOneByte( 234, RFID_Key_Temp[4] );            
-	AT24CXX_WriteOneByte( 235, RFID_Key_Temp[5] );            
-	AT24CXX_WriteOneByte( 236, RFID_Key_Temp[6] );            
+	AT24CXX_WriteOneByte( 930, RFID_Key_Temp[0] );            
+	AT24CXX_WriteOneByte( 931, RFID_Key_Temp[1] );            
+	AT24CXX_WriteOneByte( 932, RFID_Key_Temp[2] );            
+	AT24CXX_WriteOneByte( 933, RFID_Key_Temp[3] );            
+	AT24CXX_WriteOneByte( 934, RFID_Key_Temp[4] );            
+	AT24CXX_WriteOneByte( 935, RFID_Key_Temp[5] );            
+	AT24CXX_WriteOneByte( 936, RFID_Key_Temp[6] );            
 }
 void Read_IPAdd(uint8_t *IPAdd_Temp)
 {
-	AT24CXX_Read( 200,(uint8_t *)IPAdd_Temp, 0x04 );	//读取IP地址
+	AT24CXX_Read( 900,(uint8_t *)IPAdd_Temp, 0x04 );	//读取IP地址
 }
 
 void Write_IPAdd(uint8_t *IPAdd_Temp)//IP地址
 {
-	AT24CXX_WriteOneByte( 200, IPAdd_Temp[0] );            
-	AT24CXX_WriteOneByte( 201, IPAdd_Temp[1] );            
-	AT24CXX_WriteOneByte( 202, IPAdd_Temp[2] );            
-	AT24CXX_WriteOneByte( 203, IPAdd_Temp[3] );            
+	AT24CXX_WriteOneByte( 900, IPAdd_Temp[0] );            
+	AT24CXX_WriteOneByte( 901, IPAdd_Temp[1] );            
+	AT24CXX_WriteOneByte( 902, IPAdd_Temp[2] );            
+	AT24CXX_WriteOneByte( 903, IPAdd_Temp[3] );            
 }
 uint16_t Read_PortAdd(void) //端口号
 {
 	uint8_t _uTemp[2]={0};
-	AT24CXX_Read( 204,(uint8_t *)_uTemp, 0x02 );	
+	AT24CXX_Read( 904,(uint8_t *)_uTemp, 0x02 );	
 	return ((_uTemp[0]<<8)|_uTemp[1]);
 }
 
 void Write_PortAdd(uint16_t PortAdd_Temp)	//端口号
 {
-	uint8_t Temp = 204 ;
+	uint16_t Temp = 904 ;
 	AT24CXX_WriteOneByte( Temp+0, (PortAdd_Temp/256) );            
 	AT24CXX_WriteOneByte( Temp+1, (PortAdd_Temp%256) );            
 }
 void Read_ACUSN(uint8_t *ACUSN_Temp)//区域控制器SN
 {
-	AT24CXX_Read( 206,(uint8_t *)ACUSN_Temp, 0x04 );	
+	AT24CXX_Read( 906,(uint8_t *)ACUSN_Temp, 0x04 );	
 }
 
 void Write_ACUSN(uint8_t *ACUSN_Temp)	//区域控制器SN
 {
-	uint8_t Temp = 206 ;
+	uint16_t Temp = 906 ;
 	AT24CXX_WriteOneByte( Temp+0, ACUSN_Temp[0] );            
 	AT24CXX_WriteOneByte( Temp+1, ACUSN_Temp[1] );            
 	AT24CXX_WriteOneByte( Temp+2, ACUSN_Temp[2] );            
@@ -239,12 +239,12 @@ void Write_ACUSN(uint8_t *ACUSN_Temp)	//区域控制器SN
 }
 void Read_ACUAdd(uint8_t *ACUAdd_Temp)//通信码 16位
 {
-	AT24CXX_Read( 210,(uint8_t *)ACUAdd_Temp, 16 );	
+	AT24CXX_Read( 910,(uint8_t *)ACUAdd_Temp, 16 );	
 }
 
 void Write_ACUAdd(uint8_t *ACUAdd_Temp)//通信码 16位
 {
-	uint8_t Temp = 210 ;
+	uint16_t Temp = 910 ;
 	AT24CXX_WriteOneByte( Temp+0, ACUAdd_Temp[0] );            
 	AT24CXX_WriteOneByte( Temp+1, ACUAdd_Temp[1] );            
 	AT24CXX_WriteOneByte( Temp+2, ACUAdd_Temp[2] );            
@@ -264,7 +264,7 @@ void Write_ACUAdd(uint8_t *ACUAdd_Temp)//通信码 16位
 }
 void Write_localIP(uint8_t *_Temp)	//本机IP
 {
-	uint8_t Temp = 239 ;
+	uint16_t Temp = 939 ;
 	AT24CXX_WriteOneByte( Temp+0, _Temp[0] );            
 	AT24CXX_WriteOneByte( Temp+1, _Temp[1] );            
 	AT24CXX_WriteOneByte( Temp+2, _Temp[2] );            
@@ -273,7 +273,7 @@ void Write_localIP(uint8_t *_Temp)	//本机IP
 }
 void Write_netmask(uint8_t *_Temp)	//子网掩码:255.255.255.0
 {
-	uint8_t Temp = 244 ;
+	uint16_t Temp = 944 ;
 	AT24CXX_WriteOneByte( Temp+0, _Temp[0] );            
 	AT24CXX_WriteOneByte( Temp+1, _Temp[1] );            
 	AT24CXX_WriteOneByte( Temp+2, _Temp[2] );            
@@ -281,7 +281,7 @@ void Write_netmask(uint8_t *_Temp)	//子网掩码:255.255.255.0
 }
 void Write_gateway(uint8_t *_Temp)	//默认网关:192.168.1.1
 {
-	uint8_t Temp = 248 ;
+	uint16_t Temp = 948 ;
 	AT24CXX_WriteOneByte( Temp+0, _Temp[0] );            
 	AT24CXX_WriteOneByte( Temp+1, _Temp[1] );            
 	AT24CXX_WriteOneByte( Temp+2, _Temp[2] );            
@@ -289,14 +289,14 @@ void Write_gateway(uint8_t *_Temp)	//默认网关:192.168.1.1
 }
 void Read_localIP(uint8_t *_Temp)
 {
-	AT24CXX_Read( 239,(uint8_t *)_Temp, 0x05 );	//读取本机IP地址
+	AT24CXX_Read( 939,(uint8_t *)_Temp, 0x05 );	//读取本机IP地址
 }
 void Read_netmask(uint8_t *_Temp)
 {
-	AT24CXX_Read( 244,(uint8_t *)_Temp, 0x04 );	//子网掩码
+	AT24CXX_Read( 944,(uint8_t *)_Temp, 0x04 );	//子网掩码
 }
 void Read_gateway(uint8_t *_Temp)
 {
-	AT24CXX_Read( 248,(uint8_t *)_Temp, 0x04 );	//默认网关
+	AT24CXX_Read( 948,(uint8_t *)_Temp, 0x04 );	//默认网关
 }
 

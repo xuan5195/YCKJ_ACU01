@@ -186,16 +186,10 @@ u32 AT24CXX_ReadLenByte(u16 ReadAddr,u8 Len)
 u8 AT24CXX_Check(void)
 {
 	u8 temp;
-//<<<<<<< HEAD
 	uint8_t ucRFID_Key_Temp[7]={0xFF,0xFF,0xFF,0xFF,0xFF,0xF1,0x29};	//RFID_Key 初始值
 	uint8_t ACUSN_Temp[4]={0x20,0x20,0x01,0x02};	//区域控制器SN
-//	uint8_t IPAdd_Temp[4]={39,106,113,254};	//区域控制器SN
-	uint8_t IPAdd_Temp[4]={123,57,150,25};	//区域控制器SN
-//=======
-//	uint8_t ucRFID_Key_Temp[7]={0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0x01};	//RFID_Key 初始值
-//	uint8_t ACUSN_Temp[4]={0x20,0x20,0x01,0x02};	//区域控制器SN
-//	uint8_t IPAdd_Temp[4]={39,106,113,254};	//区域控制器SN
-//>>>>>>> 澧炲姞SPI_Flash
+//	uint8_t IPAdd_Temp[4]={39,106,113,254};	//服务器IP
+	uint8_t IPAdd_Temp[4]={123,57,150,25};	//服务器IP
 	uint16_t PortAdd_Temp=20000;	//端口号
 	uint8_t ACUAdd_Temp[16]={0x31,0x30,0x30,0x30,0x30,0x30,0x30,0x2D,0x62,0x37,0x36,0x31,0x63,0x32,0x62,0x30};	//区域控制器SN
 
@@ -215,8 +209,8 @@ u8 AT24CXX_Check(void)
 		Read_gateway((uint8_t *)g_Setgateway);
 	}
 	else printf("静态IP---禁用\r\n");
-	temp=AT24CXX_ReadOneByte(255);//避免每次开机都写AT24C02			   
-	if(temp==0x55)return 0;		   
+	temp = AT24CXX_ReadOneByte(EE_TYPE);//避免每次开机都写AT24C08			   
+	if( temp == 0x55 )	return 0;		   
 	else//排除第一次初始化的情况
 	{
         Delete_allDat();    //清空数据
@@ -226,9 +220,9 @@ u8 AT24CXX_Check(void)
 		Write_PortAdd(PortAdd_Temp);			//端口号
 		Write_ACUSN((uint8_t *)ACUSN_Temp);		//区域控制器SN
 		Write_ACUAdd((uint8_t *)ACUAdd_Temp);
-		AT24CXX_WriteOneByte(255,0x55);
-	    temp=AT24CXX_ReadOneByte(255);	  
-		if(temp==0x55)return 0;
+		AT24CXX_WriteOneByte(EE_TYPE,0x55);
+	    temp = AT24CXX_ReadOneByte(EE_TYPE);	  
+		if( temp == 0x55 )	return 0;
 	}
 	return 1;											  
 }
