@@ -77,7 +77,7 @@ static void tcp_client_thread(void *arg)
 	{
 		tcp_clientconn = netconn_new(NETCONN_TCP);  //创建一个TCP链接
 		err = netconn_connect(tcp_clientconn,&server_ipaddr,server_port);//连接服务器
-		 printf("创建一个TCP链接,连接服务器 %d;\r\n",err);
+		printf("创建一个TCP链接,连接服务器 %d;\r\n",err);
 		if(err != ERR_OK)  netconn_delete(tcp_clientconn); //返回值不等于ERR_OK,删除tcp_clientconn连接
 		else if (err == ERR_OK)    //处理新连接的数据
 		{ 
