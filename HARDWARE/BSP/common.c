@@ -14,6 +14,8 @@
 #include "common.h"
 #include "ymodem.h"
 #include "bsp_uart_fifo.h"
+#include "bsp_spi_flash.h"
+#include "bsp_spi_bus.h"
 
 /* ±‰¡ø ----------------------------------------------------------------------*/
 pFunction Jump_To_Application;
@@ -416,6 +418,7 @@ void SerialDownload(void)
         SerialPutString(Number);
         SerialPutString("  Bytes\r\n");
         SerialPutString("-------------------\n");
+		Show_FlashData();
     }
     else if (Size == -1)
     {

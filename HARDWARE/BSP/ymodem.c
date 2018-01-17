@@ -13,6 +13,7 @@
 
 /* 包含头文件 *****************************************************************/
 
+#include "includes.h"
 #include "stm32f10x_flash.h"
 #include "ymodem.h"
 #include "common.h"
@@ -130,7 +131,7 @@ int32_t Ymodem_Receive (uint8_t *buf)
 {
 	uint8_t packet_data[PACKET_1K_SIZE + PACKET_OVERHEAD], file_size[FILE_SIZE_LENGTH], *file_ptr, *buf_ptr;
 	int32_t i, packet_length, session_done, file_done, packets_received, errors, session_begin, size = 0;
-	uint32_t FlashDestination = 0x00;//ApplicationAddress;	//存放APP代码起始地址
+	uint32_t FlashDestination = 0x010000;//ApplicationAddress;	//存放APP代码起始地址
 	for (session_done = 0, errors = 0, session_begin = 0; ;)//死循环，一个ymodem连接
 	{
 		for (packets_received = 0, file_done = 0, buf_ptr = buf; ;)//死循环，不断接收数据
@@ -192,6 +193,14 @@ int32_t Ymodem_Receive (uint8_t *buf)
 //										{
 //											FLASHStatus = sf_EraseSector(FlashDestination + (PageSize * EraseCounter));
 //										}
+										sf_EraseSector(0x010000);		//擦除扇区 16 4K
+										sf_EraseSector(0x020000);		//擦除扇区 17 4K
+										sf_EraseSector(0x030000);		//擦除扇区 18 4K
+										sf_EraseSector(0x040000);		//擦除扇区 19 4K
+										sf_EraseSector(0x050000);		//擦除扇区 20 4K
+										sf_EraseSector(0x060000);		//擦除扇区 21 4K
+										sf_EraseSector(0x070000);		//擦除扇区 22 4K
+										sf_EraseSector(0x080000);		//擦除扇区 23 4K
 										Send_Byte(ACK);//回复ACk
 										Send_Byte(CRC16);//发送'C',询问数据
 									}
@@ -222,7 +231,7 @@ int32_t Ymodem_Receive (uint8_t *buf)
 //										FlashDestination += 4;
 //										RamSource += 4;
 //									}
-									if (sf_WriteBuffer(buf, FlashDestination, 8) == 0)
+									if (sf_WriteBuffer(buf, FlashDestination, packet_length) == 0)
 									{
 										Send_Byte(CA);
 										Send_Byte(CA);//flash烧写错误，连续发送2次中止符CA
@@ -258,6 +267,7 @@ int32_t Ymodem_Receive (uint8_t *buf)
 			{
 				break;
 			}
+			OSTimeDlyHMSM(0,0,0,5);  //延时5ms
 		}
 		if (session_done != 0)//对话结束，跳出循环
 		{

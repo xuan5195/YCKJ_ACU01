@@ -155,21 +155,16 @@ static void sf_SetCS(uint8_t _level)
 */
 void bsp_InitSFlash(void)
 {
-    uint8_t buf[10],i;
-    uint8_t add[4]={0};	//存放历史记录，前二位当前已使用地址数据量，数据为1-1000; 后二位为历史记录总数值，数值为0-1000；
+    uint8_t buf[100],i;
 	sf_ConfigGPIO();			/* 配置GPIO */
 	
 	//sf_CfgSpiHard();
 	sf_ReadInfo();				/* 自动识别芯片型号 */
-
 	sf_SetCS(0);				/* 软件方式，使能串行Flash片选 */
-	bsp_spiWrite1(CMD_DISWR);		/* 发送禁止写入的命令,即使能软件写保护 */
+	bsp_spiWrite1(CMD_DISWR);	/* 发送禁止写入的命令,即使能软件写保护 */
 	sf_SetCS(1);				/* 软件方式，禁能串行Flash片选 */
-
 	sf_WaitForWriteEnd();		/* 等待串行Flash内部操作完成 */
-
 	sf_WriteStatus(0);			/* 解除所有BLOCK的写保护 */
-    	/* 检测串行Flash OK */
 	printf("检测到串行Flash, ID = %08X, 型号: %s \r\n", g_tSF.ChipID , g_tSF.ChipName);
 	printf("    容量 : %dM字节, 扇区大小 : %d字节\r\n", g_tSF.TotalSize/(1024*1024), g_tSF.PageSize);
 
@@ -182,41 +177,37 @@ void bsp_InitSFlash(void)
         for (i = 0; i < 10; i++)    buf[i] = 0xAA;
         if (sf_WriteBuffer(buf, 10, 10) == 0)		printf("写串行Flash初始数据出错！\r\n");
         else                                		printf("写串行Flash初始数据成功！\r\n");
-        if (sf_WriteBuffer(add, 100, 4) == 0)	    printf("更新当前已使用地址，写入出错！\r\n");
-        else                                	    printf("更新当前已使用地址，写入成功！\r\n");	
     }
-    //sf_ReadBuffer(g_HistoricalDat, 100, 4);
-	//printf("读取历史记录，当前已使用地址：%04d ，当前共有历史记录数据：%04d ;\r\n", ((g_HistoricalDat[1]<<8) + g_HistoricalDat[0]), ((g_HistoricalDat[3]<<8) + g_HistoricalDat[2]));
+    
+# if 0	//只用于测试SPI_Flash读写功能
+	sf_ReadBuffer(buf, 4050, 100);
+	printf("读串行Flash成功，数据如下：\r\n");
+	for (i = 0; i < 100; i++)
+	{
+		printf(" %02X", buf[i]);
 
-//    
-//  sf_ReadBuffer(buf, 4050, 100);
-//	printf("读串行Flash成功，数据如下：\r\n");
-//	for (i = 0; i < 100; i++)
-//	{
-//		printf(" %02X", buf[i]);
+		if ((i & 31) == 31)         printf("\r\n");	/* 每行显示16字节数据 */
+		else if ((i & 31) == 15)	printf(" - ");
+	}
+    
+	/* 填充测试缓冲区 */
+	for (i = 0; i < 100; i++)
+	{
+		buf[i] = i;
+	}
+	if (sf_WriteBuffer(buf, 4050, 100) == 0)	printf("写串行Flash出错！\r\n");
+	else                                		printf("写串行Flash成功！\r\n");
 
-//		if ((i & 31) == 31)         printf("\r\n");	/* 每行显示16字节数据 */
-//		else if ((i & 31) == 15)	printf(" - ");
-//	}
-//    
-//	/* 填充测试缓冲区 */
-//	for (i = 0; i < 100; i++)
-//	{
-//		buf[i] = i;
-//	}
-//	if (sf_WriteBuffer(buf, 4050, 100) == 0)		printf("写串行Flash出错！\r\n");
-//	else                                		printf("写串行Flash成功！\r\n");
-
-//    sf_ReadBuffer(buf, 4050, 100);
-//	printf("读串行Flash成功，数据如下：\r\n");
-//	for (i = 0; i < 100; i++)
-//	{
-//		printf(" %02X", buf[i]);
-//		if ((i & 31) == 31)         printf("\r\n");	/* 每行显示16字节数据 */
-//		else if ((i & 31) == 15)	printf(" - ");
-//	}
-
-//    
+    sf_ReadBuffer(buf, 4050, 100);
+	printf("读串行Flash成功，数据如下：\r\n");
+	for (i = 0; i < 100; i++)
+	{
+		printf(" %02X", buf[i]);
+		if ((i & 31) == 31)         printf("\r\n");	/* 每行显示16字节数据 */
+		else if ((i & 31) == 15)	printf(" - ");
+	}
+# endif  
+	
 }
 
 /*
@@ -369,7 +360,7 @@ void sf_ReadBuffer(uint8_t * _pBuf, uint32_t _uiReadAddr, uint32_t _uiSize)
 
 	/* 擦除扇区操作 */
 	sf_SetCS(0);									/* 使能片选 */
-	bsp_spiWrite1(CMD_READ);							/* 发送读命令 */
+	bsp_spiWrite1(CMD_READ);						/* 发送读命令 */
 	bsp_spiWrite1((_uiReadAddr & 0xFF0000) >> 16);	/* 发送扇区地址的高8bit */
 	bsp_spiWrite1((_uiReadAddr & 0xFF00) >> 8);		/* 发送扇区地址中间8bit */
 	bsp_spiWrite1(_uiReadAddr & 0xFF);				/* 发送扇区地址低8bit */
@@ -825,5 +816,20 @@ static void sf_WaitForWriteEnd(void)
 	bsp_spiWrite1(CMD_RDSR);							/* 发送命令， 读状态寄存器 */
 	while((bsp_spiRead1() & WIP_FLAG) == SET);	/* 判断状态寄存器的忙标志位 */
 	sf_SetCS(1);									/* 禁能片选 */
+}
+
+void Show_FlashData(void)
+{
+    uint8_t buf[1024];
+	uint16_t i;
+	sf_ReadBuffer(buf, 0x010000, 1024);
+	printf("读串行Flash成功，数据如下：\r\n");
+	for (i = 0; i < 1024; i++)
+	{
+		printf("%02X", buf[i]);
+		if ( i%2 == 1)         		printf(" ");	/* 每行显示16字节数据 */
+		if ((i & 31) == 31)         printf("\r\n");	/* 每行显示16字节数据 */
+		else if ((i & 31) == 15)	printf(" - ");
+	}
 }
 

@@ -92,8 +92,8 @@ void * MsgGrp[MsgGrp_SIZE];			//消息队列存储地址,最大支持100个消息
     printf("Starting Up YCKJ-ACU...\r\n");
 	printf("VersionNo: %02X...\r\n",VersionNo);
 	printf("TestFlag: %d...\r\n",TestFlag);
-//	bsp_InitSPIBus();	   	//配置SPI总线
-//	bsp_InitSFlash();		//初始化串行Flash. 该函数会识别串行FLASH型号 
+	bsp_InitSPIBus();	   	//配置SPI总线
+	bsp_InitSFlash();		//初始化串行Flash. 该函数会识别串行FLASH型号 
 	AT24CXX_Init();			    	//IIC 初始化
 	while(AT24CXX_Check()){};      	//对IIC进行检测
     printf("AT24CXX_Check OK!\r\n");
@@ -138,17 +138,18 @@ void start_task(void *pdata)
 //key任务
 void key_task(void *pdata)
 {
-    uint8_t PrintfCount;
+    uint8_t PrintfCount,Download_Flag=0;
     uint16_t Key_Task_Count=0,HeartSendCount=0;
 	uint8_t SerialSetFlag=0x00;	//串口设置标志，修改配置后，重启才能与服务器通信	
-//        SerialPutString("\r\n================== Main Menu ============================\r\n\n");
-//        SerialPutString("  Download Image To the STM32F10x Internal Flash ------- 1\r\n\n");
-//        SerialPutString("  Upload Image From the STM32F10x Internal Flash ------- 2\r\n\n");
-//        SerialPutString("  Execute The New Program ------------------------------ 3\r\n\n");
+	SerialPutString("\r\n================== Main Menu ============================\r\n\n");
+	SerialPutString("  Download Image To the STM32F10x Internal Flash ------- 1\r\n\n");
+	SerialPutString("  Upload Image From the STM32F10x Internal Flash ------- 2\r\n\n");
+	SerialPutString("  Execute The New Program ------------------------------ 3\r\n\n");
 
 	while(1)
 	{
-//		SerialDownload();
+		if(Download_Flag == 0xAA)	//下载标志
+			SerialDownload();
 		
 		if(g_PowerUpFlag==0x00)	//等待上电初始化完成
 		{
@@ -193,16 +194,17 @@ void key_task(void *pdata)
 			OSTimeDlyHMSM(0,0,0,50);  //延时50ms		
 		}
 		//串口3检测 参数设置
-//		ReceiveSerialDat();
-//		if( ( 0x80 & g_Serial_Count ) == 0x80 )	//接收到数据
-//		{
-//			g_Serial_Count = 0x00;
-//			SerialSetFlag=0xAA;
-//			printf("\r\n串口参数设置，断开与服务器通信，重启区域控制器才能恢复与服务器通信;\r\n"); 
-//			tcp_client_flag = tcp_client_flag&(~LWIP_SEND_HeartbeatDATA);
-//			//tcp_client_flag = tcp_client_flag&(~LWIP_SEND_DATA);			
-//			SendSerialPort((uint8_t *)g_SerialDat);	//回复
-//		}
+		ReceiveSerialDat();
+		if( ( 0x80 & g_Serial_Count ) == 0x80 )	//接收到数据
+		{
+			g_Serial_Count = 0x00;
+			SerialSetFlag=0xAA;
+			printf("\r\n串口参数设置，断开与服务器通信，重启区域控制器才能恢复与服务器通信;\r\n"); 
+			tcp_client_flag = tcp_client_flag&(~LWIP_SEND_HeartbeatDATA);
+			//tcp_client_flag = tcp_client_flag&(~LWIP_SEND_DATA);			
+			SendSerialPort((uint8_t *)g_SerialDat);	//回复
+			if(g_SerialDat[2]==0x66)	Download_Flag = 0xAA;	//表示进入下载模式
+		}
 	}
 }
 
