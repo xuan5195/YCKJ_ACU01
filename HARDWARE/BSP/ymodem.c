@@ -85,6 +85,7 @@ static int32_t Receive_Packet (uint8_t *data, int32_t *length, uint32_t timeout)
     {
         return -1;
     }
+	printf("Receive_Byte c = %d.\r\n",c); 
     switch (c)	//c: 接收字符
     {
 		case SOH:	//YModem协议头，长度为128Byte
@@ -161,6 +162,7 @@ int32_t Ymodem_Receive (uint8_t *buf)
 							{
 								if (packets_received == 0)//接收第一帧数据
 								{
+									printf("\r\n接收第一帧数据\r\n"); 
 									/* Filename packet */
 									if (packet_data[PACKET_HEADER] != 0)//包含文件信息：文件名，文件长度等
 									{
@@ -203,6 +205,7 @@ int32_t Ymodem_Receive (uint8_t *buf)
 										sf_EraseSector(0x080000);		//擦除扇区 23 4K
 										Send_Byte(ACK);//回复ACk
 										Send_Byte(CRC16);//发送'C',询问数据
+										printf("回复ACk，发送'C',询问数据\r\n"); 
 									}
 									else//文件名数据包为空，结束传输
 									{

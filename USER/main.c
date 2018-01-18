@@ -138,7 +138,7 @@ void start_task(void *pdata)
 //key任务
 void key_task(void *pdata)
 {
-    uint8_t PrintfCount,Download_Flag=0;
+    uint8_t PrintfCount,Download_Flag=0xAA;
     uint16_t Key_Task_Count=0,HeartSendCount=0;
 	uint8_t SerialSetFlag=0x00;	//串口设置标志，修改配置后，重启才能与服务器通信	
 	SerialPutString("\r\n================== Main Menu ============================\r\n\n");
