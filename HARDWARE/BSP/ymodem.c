@@ -19,6 +19,8 @@
 #include "common.h"
 #include "bsp_spi_flash.h"
 #include "bsp_spi_bus.h"
+#include "bsp_serialport.h"
+#include "bsp_uart_fifo.h"
 
 /* 变量声明 -----------------------------------------------------------------*/
 uint8_t file_name[FILE_NAME_LENGTH];
@@ -30,7 +32,8 @@ uint32_t NbrOfPage = 0;
 FLASH_Status FLASHStatus = FLASH_COMPLETE;
 uint32_t RamSource;
 uint8_t tab_1024[1024] = {0};
-
+uint8_t g_Head_flag;
+uint16_t g_Packet_Count;
 /*******************************************************************************
   * @函数名称	Receive_Byte
   * @函数说明   从发送端接收一个字节
@@ -78,54 +81,52 @@ static uint32_t Send_Byte (uint8_t c)
 *******************************************************************************/
 static int32_t Receive_Packet (uint8_t *data, int32_t *length, uint32_t timeout)
 {
+    uint8_t read;
     uint16_t i, packet_size;
-    uint8_t c;
-    *length = 0;
-    if (Receive_Byte(&c, timeout) != 0)	//检测超级终端有没键按下，c: 接收字符
-    {
-        return -1;
-    }
-	printf("Receive_Byte c = %d.\r\n",c); 
-    switch (c)	//c: 接收字符
-    {
-		case SOH:	//YModem协议头，长度为128Byte
-			packet_size = PACKET_SIZE;
-			break;
-		case STX:	//YModem协议头，长度为1024Byte
-			packet_size = PACKET_1K_SIZE;
-			break;
-		case EOT:	//接收完成
-			return 0;
-		case CA:
-			if ((Receive_Byte(&c, timeout) == 0) && (c == CA))
+	if (comGetChar(SERIALPORT_COM, &read))    //接收到串口数据
+	{
+		if(g_Head_flag == 0)	//接收头部信息
+		{
+			switch (read)	//c: 接收字符
 			{
-				*length = -1;
-				return 0;
+				case SOH:	//YModem协议头，长度为128Byte
+					packet_size = PACKET_SIZE;
+					break;
+				case STX:	//YModem协议头，长度为1024Byte
+					packet_size = PACKET_1K_SIZE;
+					break;
+				case EOT:	//接收完成
+					return 0;
+				case CA:
+//					if ((Receive_Byte(&c, timeout) == 0) && (c == CA))
+//					{
+//						*length = -1;
+//						return 0;
+//					}
+//					else
+					{
+						return -1;
+					}
+				case ABORT1:
+				case ABORT2:
+					return 1;
+				default:
+					return -1;
 			}
+			g_Head_flag = 0xAA;g_Packet_Count=1;*data = read;
+		}
+		else
+		{
+			if( g_Packet_Count < (packet_size + PACKET_OVERHEAD))
+			{	data++;	*data = read;	}
 			else
 			{
-				return -1;
+				if (data[PACKET_SEQNO_INDEX] != ((data[PACKET_SEQNO_COMP_INDEX] ^ 0xff) & 0xff))	return -1;
+				*length = packet_size;
+				return 0;
 			}
-		case ABORT1:
-		case ABORT2:
-			return 1;
-		default:
-			return -1;
-    }
-    *data = c;
-    for (i = 1; i < (packet_size + PACKET_OVERHEAD); i ++)
-    {
-        if (Receive_Byte(data + i, timeout) != 0)	//接收数据
-        {
-            return -1;
-        }
-    }
-    if (data[PACKET_SEQNO_INDEX] != ((data[PACKET_SEQNO_COMP_INDEX] ^ 0xff) & 0xff))
-    {
-        return -1;
-    }
-    *length = packet_size;
-    return 0;
+		}
+	}
 }
 
 int32_t Ymodem_Receive (uint8_t *buf)

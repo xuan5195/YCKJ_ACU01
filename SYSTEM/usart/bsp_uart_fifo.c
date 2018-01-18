@@ -294,29 +294,29 @@ void ReceivePowerBUSDat(uint8_t _mode)
 void ReceiveSerialDat(void)
 {
     uint8_t read,CRC_Dat;
-		if (comGetChar(SERIALPORT_COM, &read))    //接收到串口数据
+	if (comGetChar(SERIALPORT_COM, &read))    //接收到串口数据
+	{
+		if((g_Serial_Count&0x80)==0)//接收未完成；
 		{
-			if((g_Serial_Count&0x80)==0)//接收未完成；
+			g_SerialDat[g_Serial_Count] = read;
+			g_Serial_Count++;
+			if(g_Serial_Count>32)   g_Serial_Count = 0;
+			if((g_SerialDat[g_Serial_Count-1] == 0xF3)&&(g_Serial_Count<3))   //判断起始位0xF3;
 			{
-				g_SerialDat[g_Serial_Count] = read;
-				g_Serial_Count++;
-				if(g_Serial_Count>32)   g_Serial_Count = 0;
-				if((g_SerialDat[g_Serial_Count-1] == 0xF3)&&(g_Serial_Count<3))   //判断起始位0xF3;
+				g_SerialDat[g_Serial_Count-1] = 0xF3;
+				g_Serial_Count = 1;
+			}
+			else
+			{
+				if(g_Serial_Count>=g_SerialDat[1])
 				{
-					g_SerialDat[g_Serial_Count-1] = 0xF3;
-					g_Serial_Count = 1;
+					CRC_Dat = CRC8_Table(g_SerialDat,g_Serial_Count-1);
+					if(CRC_Dat == g_SerialDat[g_Serial_Count-1])	g_Serial_Count|=0x80;	/*接收完成了 */
+					else	g_Serial_Count = 0;
 				}
-				else
-				{
-					if(g_Serial_Count>=g_SerialDat[1])
-					{
-						CRC_Dat = CRC8_Table(g_SerialDat,g_Serial_Count-1);
-						if(CRC_Dat == g_SerialDat[g_Serial_Count-1])	g_Serial_Count|=0x80;	/*接收完成了 */
-						else	g_Serial_Count = 0;
-					}
-				}
-			}            
-		}
+			}
+		}            
+	}
 }
 
 /*
