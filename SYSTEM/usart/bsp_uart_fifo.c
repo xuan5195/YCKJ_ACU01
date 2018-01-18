@@ -31,7 +31,7 @@
 #endif
 
 extern uint8_t g_SerialDat[32];
-extern uint8_t g_Serial_Count;
+extern uint16_t g_Serial_Count;
 
 /* 定义每个串口结构体变量 */
 #if UART1_FIFO_EN == 1
@@ -294,29 +294,54 @@ void ReceivePowerBUSDat(uint8_t _mode)
 void ReceiveSerialDat(void)
 {
     uint8_t read,CRC_Dat;
-		if (comGetChar(SERIALPORT_COM, &read))    //接收到串口数据
+	if (comGetChar(SERIALPORT_COM, &read))    //接收到串口数据
+	{
+		if((g_Serial_Count&0x8000)==0)//接收未完成；
 		{
-			if((g_Serial_Count&0x80)==0)//接收未完成；
+			g_SerialDat[g_Serial_Count] = read;
+			g_Serial_Count++;
+			if(g_Serial_Count>UART3_RX_BUF_SIZE)   g_Serial_Count = 0;
+			
+			if((g_SerialDat[g_Serial_Count-1] == 0xF1)&&(g_Serial_Count<2))   //判断起始位0xF1;
+			{	//数据包接收方式
+				g_SerialDat[g_Serial_Count-1] = 0xF1;
+				g_Serial_Count = 1;				
+			}
+			else if((g_SerialDat[g_Serial_Count-1] == 0xF3)&&(g_Serial_Count<2))   //判断起始位0xF3;
 			{
-				g_SerialDat[g_Serial_Count] = read;
-				g_Serial_Count++;
-				if(g_Serial_Count>32)   g_Serial_Count = 0;
-				if((g_SerialDat[g_Serial_Count-1] == 0xF3)&&(g_Serial_Count<3))   //判断起始位0xF3;
+				g_SerialDat[g_Serial_Count-1] = 0xF3;
+				g_Serial_Count = 1;
+			}
+			else
+			{
+				if(g_SerialDat[0]==0xF1)	//数据包模式
 				{
-					g_SerialDat[g_Serial_Count-1] = 0xF3;
-					g_Serial_Count = 1;
+					if((g_Serial_Count>=4)&&(g_SerialDat[1]==0x00))	//数据包数量
+					{
+						CRC_Dat = CRC8_Table(g_SerialDat,3);
+						if(CRC_Dat == g_SerialDat[3])	g_Serial_Count|=0x8000;	/*接收完成了 */
+						else	g_Serial_Count = 0;
+					}
+					else if( g_Serial_Count >= (128+3) )
+					{
+//						CRC_Dat = CRC8_Table(g_SerialDat,1027-1);
+//						if(CRC_Dat == g_SerialDat[1027-1])	g_Serial_Count|=0x8000;	/*接收完成了 */
+//						else	g_Serial_Count = 0;
+						g_Serial_Count|=0x8000;	/*接收完成了 */
+					}
 				}
 				else
 				{
 					if(g_Serial_Count>=g_SerialDat[1])
 					{
 						CRC_Dat = CRC8_Table(g_SerialDat,g_Serial_Count-1);
-						if(CRC_Dat == g_SerialDat[g_Serial_Count-1])	g_Serial_Count|=0x80;	/*接收完成了 */
+						if(CRC_Dat == g_SerialDat[g_Serial_Count-1])	g_Serial_Count|=0x8000;	/*接收完成了 */
 						else	g_Serial_Count = 0;
 					}
 				}
-			}            
-		}
+			}
+		}            
+	}
 }
 
 /*

@@ -24,8 +24,8 @@
 #include "bsp_canapp.h"
 #include "bsp_spi_flash.h"
 #include "bsp_spi_bus.h"
-#include "common.h"
-#include "ymodem.h"
+//#include "common.h"
+//#include "ymodem.h"
 
 uint8_t g_RxMessage[8]={0};	//CAN接收数据
 uint8_t g_RxMessFlag=0;		//CAN接收数据 标志
@@ -36,8 +36,10 @@ uint8_t g_lwipADD[4]={0};				//远端IP地址
 uint16_t g_lwipPort=0;					//远端端口号
 uint8_t g_ACUAdd[16]={0};				//通信码16位
 uint8_t g_ACUSN[4]={0};					//区域控制器SN 4位
-uint8_t g_SerialDat[32]={0};			//串口通信数据
-uint8_t g_Serial_Count=0;				//串口接收计数
+
+uint8_t g_SerialDat[UART3_RX_BUF_SIZE]={0};		//串口通信数据
+uint16_t g_Serial_Count=0;						//串口接收计数 
+
 uint8_t g_CostNum = 29;					//流量计脉冲数 每升水计量周期
 uint8_t g_WaterCost = 5;				//WaterCost=水费 最小扣款金额 0.005元
 uint8_t FM1702KeyCRC;					//FM1702KeyCRC
@@ -138,19 +140,12 @@ void start_task(void *pdata)
 //key任务
 void key_task(void *pdata)
 {
-    uint8_t PrintfCount,Download_Flag=0xAA;
+    uint8_t PrintfCount;
     uint16_t Key_Task_Count=0,HeartSendCount=0;
 	uint8_t SerialSetFlag=0x00;	//串口设置标志，修改配置后，重启才能与服务器通信	
-	SerialPutString("\r\n================== Main Menu ============================\r\n\n");
-	SerialPutString("  Download Image To the STM32F10x Internal Flash ------- 1\r\n\n");
-	SerialPutString("  Upload Image From the STM32F10x Internal Flash ------- 2\r\n\n");
-	SerialPutString("  Execute The New Program ------------------------------ 3\r\n\n");
 
 	while(1)
 	{
-		if(Download_Flag == 0xAA)	//下载标志
-			SerialDownload();
-		
 		if(g_PowerUpFlag==0x00)	//等待上电初始化完成
 		{
 			OSTimeDlyHMSM(0,0,0,50);  //延时50ms
@@ -189,22 +184,31 @@ void key_task(void *pdata)
 							tcp_client_flag |= LWIP_SEND_HeartbeatDATA; //标记LWIP有心跳数据包要发送;				
 //					#endif
 				}
-				
+				OSTimeDlyHMSM(0,0,0,50);  //延时50ms						
 			}
-			OSTimeDlyHMSM(0,0,0,50);  //延时50ms		
 		}
 		//串口3检测 参数设置
 		ReceiveSerialDat();
-		if( ( 0x80 & g_Serial_Count ) == 0x80 )	//接收到数据
+		if( ( 0x8000 & g_Serial_Count ) == 0x8000 )	//接收到数据
 		{
-			g_Serial_Count = 0x00;
+			g_Serial_Count = 0x0000;
 			SerialSetFlag=0xAA;
+			printf("\r\nUART3 >> %02X%02X%02X%02X%02X%02X%02X%02X;",g_SerialDat[0],g_SerialDat[1],\
+			g_SerialDat[2],g_SerialDat[3],g_SerialDat[4],g_SerialDat[5],g_SerialDat[6],g_SerialDat[7]);
 			printf("\r\n串口参数设置，断开与服务器通信，重启区域控制器才能恢复与服务器通信;\r\n"); 
+			
 			tcp_client_flag = tcp_client_flag&(~LWIP_SEND_HeartbeatDATA);
-			//tcp_client_flag = tcp_client_flag&(~LWIP_SEND_DATA);			
-			SendSerialPort((uint8_t *)g_SerialDat);	//回复
-			if(g_SerialDat[2]==0x66)	Download_Flag = 0xAA;	//表示进入下载模式
+			//tcp_client_flag = tcp_client_flag&(~LWIP_SEND_DATA);
+			if(g_SerialDat[0]==0xF3)
+			{
+				SendSerialPort((uint8_t *)g_SerialDat);	//回复
+			}
+			else if(g_SerialDat[0]==0xF1)
+			{
+				ReceivePacketDat((uint8_t *)g_SerialDat);//接收数据包
+			}
 		}
+		OSTimeDlyHMSM(0,0,0,5);  //延时5ms
 	}
 }
 

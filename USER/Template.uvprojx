@@ -509,16 +509,6 @@
               <FileType>1</FileType>
               <FilePath>..\HARDWARE\BSP\bsp_spi_flash.c</FilePath>
             </File>
-            <File>
-              <FileName>ymodem.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\HARDWARE\BSP\ymodem.c</FilePath>
-            </File>
-            <File>
-              <FileName>common.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\HARDWARE\BSP\common.c</FilePath>
-            </File>
           </Files>
         </Group>
         <Group>

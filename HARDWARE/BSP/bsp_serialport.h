@@ -10,5 +10,6 @@
 #define SERIALPORT_COM	COM3	//USB转串口通信口
 
 void SendSerialPort(uint8_t *SerialDat);
+void ReceivePacketDat(uint8_t *SerialDat);
 
 #endif

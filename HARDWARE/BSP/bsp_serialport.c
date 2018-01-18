@@ -6,9 +6,10 @@
 #include "delay.h"
 #include "sys.h"
 #include "string.h"
-//#include "usmart.h"	
 #include "includes.h"
 #include "led.h"
+#include "bsp_spi_flash.h"
+#include "bsp_spi_bus.h"
 
 
 
@@ -153,6 +154,52 @@ void SendSerialPort(uint8_t *SerialDat)
 	}
 	Runningbuf[SerialDat[1]-1] = CRC8_Table(Runningbuf,Runningbuf[1]-1);	//CRC校验位
 	comSendBuf(SERIALPORT_COM, (uint8_t *)Runningbuf, Runningbuf[1]);
+}
+
+void ReceivePacketDat(uint8_t *SerialDat)
+{
+	uint16_t i,LineNo;
+	uint8_t Runningbuf[4]={0xF2,0x00,0x00,0x00};
+	if(SerialDat[1]==0x00)	//第0数据包，数据包数量
+	{
+		Runningbuf[2] = 0xAA;
+		printf("数据包数量%02d;\r\n", SerialDat[2]);
+//		g_PacketNo = SerialDat[2];		//数据包数量
+		sf_EraseSector(0x010000);		//擦除扇区 16 4K
+		sf_EraseSector(0x020000);		//擦除扇区 17 4K
+		sf_EraseSector(0x030000);		//擦除扇区 18 4K
+		sf_EraseSector(0x040000);		//擦除扇区 19 4K
+		sf_EraseSector(0x050000);		//擦除扇区 20 4K
+		sf_EraseSector(0x060000);		//擦除扇区 21 4K
+		sf_EraseSector(0x070000);		//擦除扇区 22 4K
+		sf_EraseSector(0x080000);		//擦除扇区 23 4K
+	}
+	else
+	{//数据包存储
+		printf("%02X %02X\r\n", SerialDat[0], SerialDat[1]);
+		LineNo = 1;
+		printf("%02d: ",LineNo);
+		for (i = 2; i < 131; i++)
+		{
+			printf("%02X", SerialDat[i]);
+			if ( i%2 == 1)         		printf(" ");	/* 每行显示16字节数据 */
+			if (((i-2) & 15) == 15)		printf("\r\n%02d: ",(++LineNo));
+		}
+		printf("\r\n----CRC = %02X\r\n", SerialDat[131]);
+		if (sf_WriteBuffer((SerialDat+2), 0x010000+128*(SerialDat[1]-1), 512) == 0)
+		{			
+			printf("写串行Flash出错！\r\n");
+			Runningbuf[2] = 0x00;
+		}
+		else
+		{
+			printf("写串行Flash成功！\r\n");
+			Runningbuf[2] = 0xAA;
+		}
+	}
+	Runningbuf[1] = SerialDat[1];
+	Runningbuf[3] = CRC8_Table(Runningbuf,3);	//CRC校验位
+	comSendBuf(SERIALPORT_COM, (uint8_t *)Runningbuf, 4);		
 }
 
 
