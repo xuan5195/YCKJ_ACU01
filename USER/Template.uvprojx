@@ -425,9 +425,9 @@
               <FilePath>..\SYSTEM\sys\sys.c</FilePath>
             </File>
             <File>
-              <FileName>bsp_uart_fifo.c</FileName>
+              <FileName>usart.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\SYSTEM\usart\bsp_uart_fifo.c</FilePath>
+              <FilePath>..\SYSTEM\usart\usart.c</FilePath>
             </File>
           </Files>
         </Group>

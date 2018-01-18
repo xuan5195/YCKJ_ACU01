@@ -2,7 +2,7 @@
 #include "bsp_24cxx.h"
 #include "bsp_myiic.h"
 #include "bsp_powerbus.h"
-#include "bsp_uart_fifo.h"
+#include "usart.h"//#include "bsp_uart_fifo.h"
 
 #include "delay.h"
 #include "sys.h"

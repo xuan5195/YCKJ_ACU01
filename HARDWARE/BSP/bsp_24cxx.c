@@ -27,7 +27,7 @@
 #include "delay.h"
 #include "bsp_24cxx.h"
 #include "bsp_myiic.h"
-#include "bsp_uart_fifo.h"
+#include "usart.h"//#include "bsp_uart_fifo.h"
 #include "bsp_useadd.h"
 extern uint8_t g_lwipADD[4];	//Ô¶¶ËIPµØÖ·
 extern uint16_t g_lwipPort;		//Ô¶¶Ë¶Ë¿ÚºÅ

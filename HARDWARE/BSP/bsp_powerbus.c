@@ -1,5 +1,5 @@
 #include "bsp_powerbus.h"
-#include "bsp_uart_fifo.h"
+#include "usart.h"//#include "bsp_uart_fifo.h"
 #include "bsp_crc8.h"
 #include "bsp_useadd.h"
 
@@ -22,13 +22,13 @@ extern uint8_t g_WaterCost;		//WaterCost=水费 最小扣款金额 0.005元
 
 
 //未注册广播 
-void UnregisteredBroadcast(void)
-{
-	uint8_t Runningbuf[4]={0xF3,0x04,0xA1,0x00};
-	Runningbuf[3] = CRC8_Table(Runningbuf,Runningbuf[1]-1);	//CRC校验位
-	comSendBuf(COM2, (uint8_t *)Runningbuf, Runningbuf[1]);
-    OSTimeDlyHMSM(0, 0, 0, 150);
-}
+//void UnregisteredBroadcast(void)
+//{
+//	uint8_t Runningbuf[4]={0xF3,0x04,0xA1,0x00};
+//	Runningbuf[3] = CRC8_Table(Runningbuf,Runningbuf[1]-1);	//CRC校验位
+//	comSendBuf(COM2, (uint8_t *)Runningbuf, Runningbuf[1]);
+//    OSTimeDlyHMSM(0, 0, 0, 150);
+//}
 /*
 //读取未注册物理地址 
 uint8_t ReadUnregistered(uint8_t *_uBuff)

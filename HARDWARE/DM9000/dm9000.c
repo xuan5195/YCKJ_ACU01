@@ -1,7 +1,7 @@
 #include "dm9000.h"
 #include "delay.h"
 #include "led.h"
-#include "bsp_uart_fifo.h"//#include "usart.h"
+#include "usart.h"
 #include "lwip_comm.h"
 //////////////////////////////////////////////////////////////////////////////////	 
 //本程序只供学习使用，未经作者许可，不得用于其它任何用途

@@ -1,12 +1,11 @@
 #include "led.h"
 #include "delay.h"
-#include "key.h"
+#include "usart.h"	  
 #include "sys.h"
 #include "wdg.h"
 #include "bsp_24cxx.h"
 #include "bsp_myiic.h"
 #include "bsp_powerbus.h"
-#include "bsp_uart_fifo.h"
 #include "bsp_crc8.h"
 #include "timer.h"
 #include "sram.h"
@@ -81,7 +80,7 @@ void * MsgGrp[MsgGrp_SIZE];			//消息队列存储地址,最大支持100个消息
  {	 
 	delay_init();	    	//延时函数初始化	  
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);
-	bsp_InitUart(); 	/* 初始化串口 */
+	uart_init(); 		//初始化串口
  	LED_Init();			    //LED端口初始化
 	CAN_Mode_Init(CAN_SJW_1tq,CAN_BS1_8tq,CAN_BS2_7tq,5,CAN_Mode_Normal);//CAN初始化正常模式,波特率450Kbps    
 
@@ -148,7 +147,7 @@ void key_task(void *pdata)
 
 	while(1)
 	{
-		if(Download_Flag == 0xAA)	//下载标志
+		//if(Download_Flag == 0xAA)	//下载标志
 			SerialDownload();
 		
 		if(g_PowerUpFlag==0x00)	//等待上电初始化完成
@@ -194,7 +193,7 @@ void key_task(void *pdata)
 			OSTimeDlyHMSM(0,0,0,50);  //延时50ms		
 		}
 		//串口3检测 参数设置
-		ReceiveSerialDat();
+		//ReceiveSerialDat();
 		if( ( 0x80 & g_Serial_Count ) == 0x80 )	//接收到数据
 		{
 			g_Serial_Count = 0x00;

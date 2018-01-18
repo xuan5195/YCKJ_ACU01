@@ -1,5 +1,5 @@
 #include "bsp_serialport.h"
-#include "bsp_uart_fifo.h"
+#include "usart.h"//#include "bsp_uart_fifo.h"
 #include "bsp_crc8.h"
 #include "bsp_useadd.h"
 
@@ -152,7 +152,7 @@ void SendSerialPort(uint8_t *SerialDat)
         	break;
 	}
 	Runningbuf[SerialDat[1]-1] = CRC8_Table(Runningbuf,Runningbuf[1]-1);	//CRCÐ£ÑéÎ»
-	comSendBuf(SERIALPORT_COM, (uint8_t *)Runningbuf, Runningbuf[1]);
+	//comSendBuf(SERIALPORT_COM, (uint8_t *)Runningbuf, Runningbuf[1]);
 }
 
 

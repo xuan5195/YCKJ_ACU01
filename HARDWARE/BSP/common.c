@@ -13,7 +13,7 @@
 /* 包含头文件 *****************************************************************/
 #include "common.h"
 #include "ymodem.h"
-#include "bsp_uart_fifo.h"
+#include "usart.h"//#include "bsp_uart_fifo.h"
 #include "bsp_spi_flash.h"
 #include "bsp_spi_bus.h"
 
@@ -23,7 +23,7 @@ uint32_t JumpAddress;
 uint32_t BlockNbr = 0, UserMemoryMask = 0;
 __IO uint32_t FlashProtection = 0;
 
-extern uint8_t file_name[FILE_NAME_LENGTH];
+extern uint8_t FileName[FILE_NAME_LENGTH];
 extern uint8_t tab_1024[1024];
 
 /*******************************************************************************
@@ -196,13 +196,9 @@ uint32_t GetIntegerInput(int32_t * num)
 *******************************************************************************/
 uint32_t SerialKeyPressed(uint8_t *key)
 {
-    uint8_t read;
-	if (comGetChar(COM3, &read))    //接收到串口数据
-	{		
-//    if ( USART_GetFlagStatus(USART3, USART_FLAG_RXNE) != RESET)
-//    {
-//        *key = (uint8_t)USART3->DR;
-        *key = read;
+    if ( USART_GetFlagStatus(USART3, USART_FLAG_RXNE) != RESET)
+    {
+        *key = (uint8_t)USART3->DR;
         return 1;
     }
     else
@@ -412,7 +408,7 @@ void SerialDownload(void)
     if (Size > 0)
     {
         SerialPutString("\n\n\r Programming Completed Successfully!\n\r--------------------------------\r\n Name: ");
-        SerialPutString(file_name);
+        SerialPutString(FileName);
         Int2Str(Number, Size);
         SerialPutString("\n\r Size: ");
         SerialPutString(Number);

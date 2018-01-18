@@ -28,11 +28,36 @@
 //1,增加了对UCOSII的支持
 #define USART_REC_LEN  			200  	//定义最大接收字节数 200
 #define EN_USART1_RX 			1		//使能（1）/禁止（0）串口1接收
-	  	
+#define	UART1_FIFO_EN	1
+#define	UART2_FIFO_EN	0
+#define	UART3_FIFO_EN	1
+#define	UART4_FIFO_EN	0
+#define	UART5_FIFO_EN	0
+
+/* 定义串口波特率和FIFO缓冲区大小，分为发送缓冲区和接收缓冲区, 支持全双工 */
+#if UART1_FIFO_EN == 1
+	#define UART1_BAUD			115200
+	#define UART1_TX_BUF_SIZE	1*1024
+	#define UART1_RX_BUF_SIZE	1*1024
+#endif
+
+#if UART2_FIFO_EN == 1
+	#define UART2_BAUD			115200
+	#define UART2_TX_BUF_SIZE	1*1024
+	#define UART2_RX_BUF_SIZE	1*1024
+#endif
+
+#if UART3_FIFO_EN == 1
+	#define UART3_BAUD			115200
+	#define UART3_TX_BUF_SIZE	1*1024
+	#define UART3_RX_BUF_SIZE	1*1024
+#endif
+
+
 extern u8  USART_RX_BUF[USART_REC_LEN]; //接收缓冲,最大USART_REC_LEN个字节.末字节为换行符 
 extern u16 USART_RX_STA;         		//接收状态标记	
 //如果想串口中断接收，请不要注释以下宏定义
-void uart_init(u32 bound);
+void uart_init(void);
 #endif
 
 

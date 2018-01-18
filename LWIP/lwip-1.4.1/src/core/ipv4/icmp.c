@@ -40,7 +40,7 @@
    is not implemented. */
 
 #include "lwip/opt.h"
-#include "bsp_uart_fifo.h"//#include "usart.h"
+#include "usart.h"
 
 #if LWIP_ICMP /* don't build if not configured for use in lwipopts.h */
 
