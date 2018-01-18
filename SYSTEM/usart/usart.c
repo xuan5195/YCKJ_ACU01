@@ -132,8 +132,9 @@ void uart_init(void)
 #endif
 
 #if UART3_FIFO_EN == 1			//串口3 TX = PB10   RX = PB11
-	//第1步： 开启GPIO和UART时钟
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB | RCC_APB1Periph_USART3, ENABLE);
+	/* 第1步： 开启GPIO和UART时钟 */
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB | RCC_APB2Periph_AFIO, ENABLE);
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART3, ENABLE);
 
 	//第2步：将USART Tx的GPIO配置为推挽复用模式
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10;
