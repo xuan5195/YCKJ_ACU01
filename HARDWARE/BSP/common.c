@@ -196,13 +196,13 @@ uint32_t GetIntegerInput(int32_t * num)
 *******************************************************************************/
 uint32_t SerialKeyPressed(uint8_t *key)
 {
-    uint8_t read;
-	if (comGetChar(COM3, &read))    //接收到串口数据
-	{		
-//    if ( USART_GetFlagStatus(USART3, USART_FLAG_RXNE) != RESET)
-//    {
-//        *key = (uint8_t)USART3->DR;
-        *key = read;
+//    uint8_t read;
+//	if (comGetChar(COM3, &read))    //接收到串口数据
+//	{		
+//        *key = read;
+    if ( USART_GetFlagStatus(USART3, USART_FLAG_RXNE) != RESET)
+    {
+        *key = (uint8_t)USART3->DR;
         return 1;
     }
     else

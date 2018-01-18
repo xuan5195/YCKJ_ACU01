@@ -270,7 +270,7 @@ int32_t Ymodem_Receive (uint8_t *buf)
 			{
 				break;
 			}
-			OSTimeDlyHMSM(0,0,0,5);  //延时5ms
+			OSTimeDlyHMSM(0,0,0,50);  //延时50ms
 		}
 		if (session_done != 0)//对话结束，跳出循环
 		{
