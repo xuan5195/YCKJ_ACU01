@@ -50,6 +50,7 @@ uint8_t g_Setip[5];       	//本机IP地址 g_Setip[0] 为使用标志
 uint8_t g_Setnetmask[4]; 	//子网掩码
 uint8_t g_Setgateway[4]; 	//默认网关的IP地址
 uint8_t g_NewAddFlag=0x00; 	//新增标志
+uint8_t g_SPI_Flash_Show=0;			//用于测试使用
 
 //KEY任务
 #define KEY_TASK_PRIO 		9		//任务优先级
@@ -207,6 +208,17 @@ void key_task(void *pdata)
 			{
 				ReceivePacketDat((uint8_t *)g_SerialDat);//接收数据包
 			}
+		}
+		
+		if(g_SPI_Flash_Show==0xAA)
+		{
+			g_SPI_Flash_Show = 0;
+			Show_FlashData(0);
+			Show_FlashData(1);
+			Show_FlashData(2);
+			Show_FlashData(3);
+			Show_FlashData(4);
+			Show_FlashData(5);
 		}
 		OSTimeDlyHMSM(0,0,0,5);  //延时5ms
 	}

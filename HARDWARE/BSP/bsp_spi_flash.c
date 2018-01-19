@@ -818,18 +818,40 @@ static void sf_WaitForWriteEnd(void)
 	sf_SetCS(1);									/* 禁能片选 */
 }
 
-void Show_FlashData(void)
+void Show_FlashData(uint8_t SectorNo)	//显示第几个扇区，SectorNo=0-15；//63k
 {
-    uint8_t buf[1024];
+    uint8_t buf[1024]={0},LineNo=0;
 	uint16_t i;
-	sf_ReadBuffer(buf, 0x010000, 1024);
+	sf_ReadBuffer(buf, (0x010000+1024*(SectorNo*4+0)), 1024);
 	printf("读串行Flash成功，数据如下：\r\n");
+	printf("%02d: ",LineNo);
 	for (i = 0; i < 1024; i++)
 	{
 		printf("%02X", buf[i]);
 		if ( i%2 == 1)         		printf(" ");	/* 每行显示16字节数据 */
-		if ((i & 31) == 31)         printf("\r\n");	/* 每行显示16字节数据 */
-		else if ((i & 31) == 15)	printf(" - ");
+		if ((i & 15) == 15)         printf("\r\n%02d: ",(++LineNo));
+	}
+	sf_ReadBuffer(buf, (0x010000+1024*(SectorNo*4+1)), 1024);
+	for (i = 0; i < 1024; i++)
+	{
+		printf("%02X", buf[i]);
+		if ( i%2 == 1)         		printf(" ");	/* 每行显示16字节数据 */
+		if ((i & 15) == 15)         printf("\r\n%02d: ",(++LineNo));
+	}
+	sf_ReadBuffer(buf, (0x010000+1024*(SectorNo*4+2)), 1024);
+	for (i = 0; i < 1024; i++)
+	{
+		printf("%02X", buf[i]);
+		if ( i%2 == 1)         		printf(" ");	/* 每行显示16字节数据 */
+		if ((i & 15) == 15)         printf("\r\n%02d: ",(++LineNo));
+	}
+	sf_ReadBuffer(buf, (0x010000+1024*(SectorNo*4+3)), 1024);
+	for (i = 0; i < 1024; i++)
+	{
+		printf("%02X", buf[i]);
+		if ( i%2 == 1)         		printf(" ");	/* 每行显示16字节数据 */
+		if(i!=1023)	{	if ((i & 15) == 15)	printf("\r\n%02d: ",(++LineNo));	}
+		else		{	if ((i & 15) == 15)	printf("\r\n");						}
 	}
 }
 

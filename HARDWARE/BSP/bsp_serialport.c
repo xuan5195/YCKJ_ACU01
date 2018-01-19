@@ -21,7 +21,7 @@ extern uint8_t g_ACUSN[4];		//区域控制器SN 4位
 extern uint8_t g_Setip[5];       	//本机IP地址
 extern uint8_t g_Setnetmask[4]; 	//子网掩码
 extern uint8_t g_Setgateway[4]; 	//默认网关的IP地址
-
+extern uint8_t g_SPI_Flash_Show;			//用于测试使用
 
 void SendSerialPort(uint8_t *SerialDat)
 {
@@ -148,6 +148,9 @@ void SendSerialPort(uint8_t *SerialDat)
 			Runningbuf[8] = RFID_Key[5];	//数据域 RFID_Key6
 			Runningbuf[9] = SerialDat[9];	//数据域 A密码 0x60
 			Runningbuf[10] = RFID_Key[6];	//数据域 块地址
+			break;	
+		case 0xD0:	//测试显示串口SPI_Flash数据
+			g_SPI_Flash_Show = 0xAA;
 			break;	
         default:
         	break;
