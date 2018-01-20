@@ -4,6 +4,8 @@
 #include "bsp_can.h"
 #include "bsp_canapp.h"
 #include "bsp_crc8.h"
+#include "bsp_spi_flash.h"
+#include "bsp_spi_bus.h"
 
 #include "includes.h"
 
@@ -297,4 +299,24 @@ void Can_SendPBus_ErrCom(uint8_t *_uBuff)
 	Runningbuf[4] = _uBuff[4];	//异常代码低位
 	Runningbuf[6] = _uBuff[5];	//通信码
 	Package_Send(0x11,(uint8_t *)Runningbuf);
+}
+
+
+void Send_IAPDate(uint8_t _PackNo)
+{
+	uint8_t buf[128]={0},_uBuff[8]={0};
+	uint8_t i,j;
+	sf_ReadBuffer(buf, (0x010000+128*_PackNo), 128);	//读取128个数据,分16帧往CAN发送
+	_uBuff[0] = _PackNo;								//数据包数
+	_uBuff[1] = CRC8_Table(buf,128);					//CRC校验位
+	Can_Send_PackMsg(0xFE,(uint8_t *)_uBuff);			//CAN 发送数据包	,0xFE表示数据包头
+	OSTimeDlyHMSM(0,0,0,50);  //延时10ms
+	for(j=0;j<8;j++)	{_uBuff[j] = 0x00;}				//清
+	for(i=0;i<16;i++)
+	{
+		for(j=0;j<8;j++)	{_uBuff[j] = buf[i*8+j];}		//加载CAN数据
+		printf("CAN_Send i=%02d: %02X%02X%02X%02X%02X%02X%02X%02X; \r\n",i,_uBuff[0],_uBuff[1],\
+		_uBuff[2],_uBuff[3],_uBuff[4],_uBuff[5],_uBuff[6],_uBuff[7]);
+		Can_Send_PackMsg(_PackNo,(uint8_t *)_uBuff);	//CAN 发送数据包
+	}
 }

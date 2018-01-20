@@ -11,6 +11,7 @@ void Can_SendBroadcast_Com(uint8_t _WaterCost,uint8_t _CostNum);
 uint8_t Can_SendPBus_Com(uint8_t _uDat,uint8_t *_uBuff);
 void Can_ReadPBus_Succeed(uint8_t *_uBuff);
 void Can_SendPBus_ErrCom(uint8_t *_uBuff);
+void Send_IAPDate(uint8_t _PackNo);
 
 #endif
 

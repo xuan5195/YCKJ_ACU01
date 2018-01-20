@@ -133,6 +133,28 @@ u8 Can_Send_Msg(u8* msg,u8 len)
 	return 0;		
 
 }
+
+//can发送一组数据(固定格式:ID为0X12,标准帧,数据帧)	
+//msg:数据指针,最大为8个字节.
+//返回值:0,成功;	其他,失败;
+u8 Can_Send_PackMsg(u8 _PackNo,u8* msg)
+{	
+	u8 mbox;
+	u16 i=0;
+	CanTxMsg TxMessage;
+	TxMessage.StdId=0x500|_PackNo;	// 标准标识符为0x500|
+	TxMessage.ExtId=0x0000F000|((TxMessage.StdId)<<17);		// 设置扩展标示符（29位）
+	TxMessage.IDE=CAN_Id_Standard;	// 不使用扩展标识符 CAN_Id_Standard,CAN_Id_Extended
+	TxMessage.RTR=0;		// 消息类型为数据帧，一帧8位
+	TxMessage.DLC=8;		// 帧长度
+	for(i=0;i<8;i++)	TxMessage.Data[i]=msg[i];	// 帧信息          
+	mbox = CAN_Transmit(CAN1, &TxMessage);   
+	i=0;
+	while((CAN_TransmitStatus(CAN1, mbox)==CAN_TxStatus_Failed)&&(i<0XFFF))i++;	//等待发送结束
+	if(i>=0XFFF)return 1;
+	return 0;		
+}
+
 //can口接收数据查询
 //buf:数据缓存区;	 
 //返回值:0,无数据被收到;	 其他,接收的数据长度;

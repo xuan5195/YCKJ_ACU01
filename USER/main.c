@@ -50,7 +50,9 @@ uint8_t g_Setip[5];       	//本机IP地址 g_Setip[0] 为使用标志
 uint8_t g_Setnetmask[4]; 	//子网掩码
 uint8_t g_Setgateway[4]; 	//默认网关的IP地址
 uint8_t g_NewAddFlag=0x00; 	//新增标志
-uint8_t g_SPI_Flash_Show=0;			//用于测试使用
+uint8_t g_SPI_Flash_Show=0;	//用于测试使用
+uint8_t g_IAPFlag = 0x00;	//在线升级标志，0xAA时表示卡机在线升级中。这时不进行卡机通信、TCP通信
+
 
 //KEY任务
 #define KEY_TASK_PRIO 		9		//任务优先级
@@ -213,12 +215,12 @@ void key_task(void *pdata)
 		if(g_SPI_Flash_Show==0xAA)
 		{
 			g_SPI_Flash_Show = 0;
-			Show_FlashData(0);
-			Show_FlashData(1);
-			Show_FlashData(2);
-			Show_FlashData(3);
-			Show_FlashData(4);
-			Show_FlashData(5);
+			Show_FlashData(0);	//显示Flash数据 4K  0x0100 0000 - 0x0100 0FFF
+			Show_FlashData(1);	//显示Flash数据 4K  0x0100 1000 - 0x0100 1FFF
+			Show_FlashData(2);	//显示Flash数据 4K  0x0100 2000 - 0x0100 2FFF
+			Show_FlashData(3);	//显示Flash数据 4K  0x0100 3000 - 0x0100 3FFF
+			Show_FlashData(4);	//显示Flash数据 4K  0x0100 4000 - 0x0100 4FFF
+			Show_FlashData(5);	//显示Flash数据 4K  0x0100 5000 - 0x0100 5FFF
 		}
 		OSTimeDlyHMSM(0,0,0,5);  //延时5ms
 	}
@@ -295,89 +297,103 @@ void led_task(void *pdata)
 //	IWDG_Init(6,1024);    //与分频数为64,重载值为1024,溢出时间为6s	   
 	while(1)
 	{
-		IWDG_Feed();	//增加看门狗
-		if((Old_CostNum != g_CostNum)||(Old_WaterCost != g_WaterCost))
+//		IWDG_Feed();	//增加看门狗
+		if(g_IAPFlag==0xAA)	//IAP升级中
 		{
-			Can_SendBroadcast_Com(g_WaterCost,g_CostNum);
-			if(Broadcast_Count<=2)	Broadcast_Count++;	//重复发送2次
-			else
+			Send_IAPDate(0);
+			OSTimeDlyHMSM(0,0,0,200);  //延时10ms
+			Send_IAPDate(1);
+			OSTimeDlyHMSM(0,0,0,200);  //延时10ms
+			Send_IAPDate(2);
+			OSTimeDlyHMSM(0,0,0,200);  //延时10ms
+			Send_IAPDate(3);
+			g_IAPFlag = 0;
+		}
+		else
+		{
+			if((Old_CostNum != g_CostNum)||(Old_WaterCost != g_WaterCost))
 			{
-				Broadcast_Count = 0;BroadTime=0;
-				Old_CostNum = g_CostNum;	//流量计脉冲数 每升水计量周期
-				Old_WaterCost = g_WaterCost;//WaterCost=水费 最小扣款金额 0.005元
+				Can_SendBroadcast_Com(g_WaterCost,g_CostNum);
+				if(Broadcast_Count<=2)	Broadcast_Count++;	//重复发送2次
+				else
+				{
+					Broadcast_Count = 0;BroadTime=0;
+					Old_CostNum = g_CostNum;	//流量计脉冲数 每升水计量周期
+					Old_WaterCost = g_WaterCost;//WaterCost=水费 最小扣款金额 0.005元
+				}
 			}
-		}
-		if(Old_FM1702KeyCRC!=FM1702KeyCRC)
-		{
-			Can_SendBroadcast_Key((uint8_t *)FM1702_Key);
-			if(Broadcast_Count<=2)	Broadcast_Count++;	//重复发送2次
-			else
+			if(Old_FM1702KeyCRC!=FM1702KeyCRC)
 			{
-				Broadcast_Count = 0;
-				Old_FM1702KeyCRC = FM1702KeyCRC;
+				Can_SendBroadcast_Key((uint8_t *)FM1702_Key);
+				if(Broadcast_Count<=2)	Broadcast_Count++;	//重复发送2次
+				else
+				{
+					Broadcast_Count = 0;
+					Old_FM1702KeyCRC = FM1702KeyCRC;
+				}
 			}
-		}
-		if(Led_TaskCount<BUSNUM_SIZE)
-		{   //2.轮循方式取数据
-			ReadRunningData(Led_TaskCount+1);			
+			if(Led_TaskCount<BUSNUM_SIZE)
+			{   //2.轮循方式取数据
+				ReadRunningData(Led_TaskCount+1);			
 
-			if((g_RUNDate[Led_TaskCount][0]&0x03) != 0x00)	//有数据
+				if((g_RUNDate[Led_TaskCount][0]&0x03) != 0x00)	//有数据
+				{
+					g_SendDate[0] = 0xAA;	//标志为使用
+					if((g_RUNDate[Led_TaskCount][0]&0x03) == 0x01)		g_SendDate[1] = 0x11;	//插卡
+					else if((g_RUNDate[Led_TaskCount][0]&0x03) == 0x02)g_SendDate[1] = 0x13;	//拔卡
+					g_SendDate[2] = g_RUNDate[Led_TaskCount][1];	//卡机SN
+					g_SendDate[3] = g_RUNDate[Led_TaskCount][2];	//卡机SN
+					g_SendDate[4] = g_RUNDate[Led_TaskCount][3];	//卡机SN
+					g_SendDate[5] = g_RUNDate[Led_TaskCount][4];	//卡机SN
+					g_SendDate[6] = g_RUNDate[Led_TaskCount][5];	//CardSN
+					g_SendDate[7] = g_RUNDate[Led_TaskCount][6];	//CardSN
+					g_SendDate[8] = g_RUNDate[Led_TaskCount][7];	//CardSN
+					g_SendDate[9] = g_RUNDate[Led_TaskCount][8];	//CardSN
+					g_SendDate[10] = g_RUNDate[Led_TaskCount][9];	//Card金额1
+					g_SendDate[11] = g_RUNDate[Led_TaskCount][10];	//Card金额2	
+					g_SendDate[12] = g_RUNDate[Led_TaskCount][11];	//Card金额3		
+					g_SendDate[13] = g_RUNDate[Led_TaskCount][12];	//校验	
+					g_SendDate[14] = Led_TaskCount;//逻辑地址	
+					g_SendDate[15] = g_RUNDate[Led_TaskCount][13];//通信码
+					q_err=OSQPost(q_msg,g_SendDate);	//发送队列
+					if(q_err!=OS_ERR_NONE) 	myfree(SRAMIN,g_SendDate);	//发送失败,释放内存
+					g_RUNDate[Led_TaskCount][0] = g_RUNDate[Led_TaskCount][0]&(~0x03);	//发送完成，清数据标志位					
+				}
+
+			}
+			p=OSQPend(q_msg_ser,1,&p_err);//请求消息队列
+			if((OS_ERR_NONE==p_err)&&(p!=NULL))
 			{
-				g_SendDate[0] = 0xAA;	//标志为使用
-				if((g_RUNDate[Led_TaskCount][0]&0x03) == 0x01)		g_SendDate[1] = 0x11;	//插卡
-				else if((g_RUNDate[Led_TaskCount][0]&0x03) == 0x02)g_SendDate[1] = 0x13;	//拔卡
-				g_SendDate[2] = g_RUNDate[Led_TaskCount][1];	//卡机SN
-				g_SendDate[3] = g_RUNDate[Led_TaskCount][2];	//卡机SN
-				g_SendDate[4] = g_RUNDate[Led_TaskCount][3];	//卡机SN
-				g_SendDate[5] = g_RUNDate[Led_TaskCount][4];	//卡机SN
-				g_SendDate[6] = g_RUNDate[Led_TaskCount][5];	//CardSN
-				g_SendDate[7] = g_RUNDate[Led_TaskCount][6];	//CardSN
-				g_SendDate[8] = g_RUNDate[Led_TaskCount][7];	//CardSN
-				g_SendDate[9] = g_RUNDate[Led_TaskCount][8];	//CardSN
-				g_SendDate[10] = g_RUNDate[Led_TaskCount][9];	//Card金额1
-				g_SendDate[11] = g_RUNDate[Led_TaskCount][10];	//Card金额2	
-				g_SendDate[12] = g_RUNDate[Led_TaskCount][11];	//Card金额3		
-				g_SendDate[13] = g_RUNDate[Led_TaskCount][12];	//校验	
-				g_SendDate[14] = Led_TaskCount;//逻辑地址	
-				g_SendDate[15] = g_RUNDate[Led_TaskCount][13];//通信码
-				q_err=OSQPost(q_msg,g_SendDate);	//发送队列
-				if(q_err!=OS_ERR_NONE) 	myfree(SRAMIN,g_SendDate);	//发送失败,释放内存
-				g_RUNDate[Led_TaskCount][0] = g_RUNDate[Led_TaskCount][0]&(~0x03);	//发送完成，清数据标志位					
+				WriteRFIDData((uint8_t *)p);	
 			}
+			myfree(SRAMIN,p);
 
-		}
-		p=OSQPend(q_msg_ser,1,&p_err);//请求消息队列
-		if((OS_ERR_NONE==p_err)&&(p!=NULL))
-		{
-			WriteRFIDData((uint8_t *)p);	
-		}
-		myfree(SRAMIN,p);
-
-		if( Led_TaskCount > (BUSNUM_SIZE+1) )    
-		{   
-			printf("\r\n\r\n");    	Led_TaskCount = 0;  
-			if(CycleCount<50)		CycleCount++;	
-			else	
-			{	
-				CycleCount = 0;
-//				if(Binary_searchSN()==0x00)
-//				{
-//					OSTimeDlyHMSM(0,0,0,50);  //延时50ms
-//					Can_SendBroadcast_Com(g_WaterCost,g_CostNum);
-//					OSTimeDlyHMSM(0,0,0,200);  //延时200ms
-//					Can_SendBroadcast_Key((uint8_t *)FM1702_Key);
-//					OSTimeDlyHMSM(0,0,0,200);  //延时200ms
-//					g_NewAddFlag = 0xAA;
-//				}					
+			if( Led_TaskCount > (BUSNUM_SIZE+1) )    
+			{   
+				printf("\r\n\r\n");    	Led_TaskCount = 0;  
+				if(CycleCount<50)		CycleCount++;	
+				else	
+				{	
+					CycleCount = 0;
+	//				if(Binary_searchSN()==0x00)
+	//				{
+	//					OSTimeDlyHMSM(0,0,0,50);  //延时50ms
+	//					Can_SendBroadcast_Com(g_WaterCost,g_CostNum);
+	//					OSTimeDlyHMSM(0,0,0,200);  //延时200ms
+	//					Can_SendBroadcast_Key((uint8_t *)FM1702_Key);
+	//					OSTimeDlyHMSM(0,0,0,200);  //延时200ms
+	//					g_NewAddFlag = 0xAA;
+	//				}					
+				}
+			}            
+			else Led_TaskCount++;  
+			if(BroadTime>0x000F0000)	//20ms *1000
+			{
+				BroadTime=0;
+				Can_SendBroadcast_Com(g_WaterCost,g_CostNum);
 			}
-		}            
-        else Led_TaskCount++;  
-		if(BroadTime>0x000F0000)	//20ms *1000
-		{
-			BroadTime=0;
-			Can_SendBroadcast_Com(g_WaterCost,g_CostNum);
+			else BroadTime++;
 		}
-		else BroadTime++;
 		OSTimeDlyHMSM(0,0,0,10);  //延时10ms
  	}
 }

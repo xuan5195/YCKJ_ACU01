@@ -112,7 +112,7 @@ typedef struct
 	uint16_t usTxBufSize;		/* 发送缓冲区大小 */
 	uint16_t usRxBufSize;		/* 接收缓冲区大小 */
 	__IO uint16_t usTxWrite;			/* 发送缓冲区写指针 */
-	__IO uint16_t usTxRead;			/* 发送缓冲区读指针 */
+	__IO uint16_t usTxRead;				/* 发送缓冲区读指针 */
 	__IO uint16_t usTxCount;			/* 等待发送的数据个数 */
 
 	__IO uint16_t usRxWrite;			/* 接收缓冲区写指针 */

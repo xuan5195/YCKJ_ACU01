@@ -823,8 +823,8 @@ void Show_FlashData(uint8_t SectorNo)	//显示第几个扇区，SectorNo=0-15；//63k
     uint8_t buf[1024]={0},LineNo=0;
 	uint16_t i;
 	sf_ReadBuffer(buf, (0x010000+1024*(SectorNo*4+0)), 1024);
-	printf("读串行Flash成功，数据如下：\r\n");
-	printf("%02d: ",LineNo);
+	printf("读串行Flash成功，起始地址：%08X, 数据如下：\r\n",(0x010000+1024*(SectorNo*4+0)));
+	printf("%03d: ",LineNo);
 	for (i = 0; i < 1024; i++)
 	{
 		printf("%02X", buf[i]);
