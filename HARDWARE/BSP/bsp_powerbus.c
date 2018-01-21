@@ -279,7 +279,7 @@ void ReadRunningData(uint8_t _no)
 		if((g_RUNDate[_no][1] == 0x0)&&(g_RUNDate[_no][4] == 0x0))	{g_RUNDate[_no][0] = 0x0;}
 		LED1 = !LED1;//LED1 = 0;
 		uDat = Can_SendPBus_Com(_no,(uint8_t *)TempBuff);		//发送轮循取数据命令
-		if( uDat == 0x00 )		uDat = Can_SendPBus_Com(_no,(uint8_t *)TempBuff);
+		//if( uDat == 0x00 )		uDat = Can_SendPBus_Com(_no,(uint8_t *)TempBuff);
 		{
 			//printf("uDat = %2d; ",uDat); 
 			if( uDat == 0x02 )		//无数据	

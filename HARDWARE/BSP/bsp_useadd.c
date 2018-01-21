@@ -151,8 +151,9 @@ void PowerUPLogitADDCheck(void)
 					}
 				}
 			}
+			OSTimeDlyHMSM(0,0,0,10);
 		}
-		OSTimeDlyHMSM(0,0,0,200);
+		OSTimeDlyHMSM(0,0,0,5);
 	}
 }
 

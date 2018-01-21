@@ -149,11 +149,20 @@ void SendSerialPort(uint8_t *SerialDat)
 			Runningbuf[9] = SerialDat[9];	//数据域 A密码 0x60
 			Runningbuf[10] = RFID_Key[6];	//数据域 块地址
 			break;	
-		case 0xD0:	//测试显示串口SPI_Flash数据
+		case 0xD0:	//IAP升级中
 			//g_SPI_Flash_Show = 0xAA;
-			g_IAPFlag = 0xAA;
+			g_IAPFlag = 0xD0;
 			break;	
-        default:
+		case 0xD1:	//擦除FLashSPI_Flash数据
+			g_IAPFlag = 0xD1;
+			break;	
+		case 0xD2:	//显示FLash内数据
+			g_IAPFlag = 0xD2;
+			break;	
+		case 0xD3:	//跳转启动
+			g_IAPFlag = 0xD4;
+			break;	        
+		default:
         	break;
 	}
 	Runningbuf[SerialDat[1]-1] = CRC8_Table(Runningbuf,Runningbuf[1]-1);	//CRC校验位

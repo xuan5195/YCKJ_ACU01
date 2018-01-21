@@ -88,7 +88,7 @@ void * MsgGrp[MsgGrp_SIZE];			//消息队列存储地址,最大支持100个消息
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);
 	bsp_InitUart(); 	/* 初始化串口 */
  	LED_Init();			    //LED端口初始化
-	CAN_Mode_Init(CAN_SJW_1tq,CAN_BS1_8tq,CAN_BS2_7tq,5,CAN_Mode_Normal);//CAN初始化正常模式,波特率450Kbps    
+	CAN_Mode_Init(CAN_SJW_1tq,CAN_BS1_8tq,CAN_BS2_7tq,18,CAN_Mode_Normal);//CAN初始化正常模式,波特率450Kbps 
 
 	//usmart_dev.init(72);	//初始化USMART		 
  	//FSMC_SRAM_Init();		//初始化外部SRAM
@@ -173,7 +173,7 @@ void key_task(void *pdata)
 					{
 						tcp_client_flag |= LWIP_SEND_HeartbeatDATA; //标记LWIP有心跳数据包要发送;
 						PrintfCount++;
-						printf("\r\n 快递心跳包发送状态,发送次数%2d,计数值：%d.",PrintfCount,HeartSendCount); 
+						//printf("\r\n 快递心跳包发送状态,发送次数%2d,计数值：%d.",PrintfCount,HeartSendCount); 
 					}
 				}
 				else
@@ -236,9 +236,10 @@ void led_task(void *pdata)
 	uint8_t PhysicalADD[4] = {0x00,0x00,0x00,0x00};
     uint8_t u8Temp; //存储临时数据
 	uint8_t Led_TaskCount = 0;
-    uint8_t ucCount = 80;	//上电80秒
+    uint8_t ucCount = 100;	//上电100次
 	uint8_t CycleCount =0;
 	uint32_t BroadTime=0;
+	uint8_t i;
 	
 	u8 *p;
 	u8 p_err;
@@ -298,15 +299,30 @@ void led_task(void *pdata)
 	while(1)
 	{
 //		IWDG_Feed();	//增加看门狗
-		if(g_IAPFlag==0xAA)	//IAP升级中
+		if(g_IAPFlag==0xD0)	//IAP升级中
 		{
-			Send_IAPDate(0);
-			OSTimeDlyHMSM(0,0,0,200);  //延时10ms
-			Send_IAPDate(1);
-			OSTimeDlyHMSM(0,0,0,200);  //延时10ms
-			Send_IAPDate(2);
-			OSTimeDlyHMSM(0,0,0,200);  //延时10ms
-			Send_IAPDate(3);
+			for(i=0;i<168;i++)
+			{
+//				IWDG_Feed();	//增加看门狗
+				Send_IAPDate(i);
+				OSTimeDlyHMSM(0,0,0,100);  //延时10ms
+			}
+			Send_IAPDate0(0xFC);	//让卡机跳转并运行
+			g_IAPFlag = 0;
+		}
+		else if(g_IAPFlag==0xD1)	//擦除FLash
+		{
+			Send_IAPDate0(0xFD);
+			g_IAPFlag = 0;
+		}
+		else if(g_IAPFlag==0xD2)	//显示FLash内数据
+		{
+			Send_IAPDate0(0xFB);			
+			g_IAPFlag = 0;
+		}
+		else if(g_IAPFlag==0xD3)	//跳转APP
+		{
+			Send_IAPDate0(0xFC);			
 			g_IAPFlag = 0;
 		}
 		else

@@ -172,6 +172,7 @@ uint8_t Can_SendPBus_Com(uint8_t _uDat,uint8_t *_uBuff)
 			_uBuff[3] = Recebuf[4];	//卡号3；
 			_uBuff[4] = Recebuf[5];	//卡号4；
 			Overflow_Flag=10;res=0;
+			printf("%d,",Overflow_Flag);
 			while((res==0)&& (Overflow_Flag>0) )//接收到有数据
 			{
 //				res=Can_Receive_Msg(Recebuf);
@@ -188,9 +189,10 @@ uint8_t Can_SendPBus_Com(uint8_t _uDat,uint8_t *_uBuff)
 				OSTimeDlyHMSM(0, 0, 0, 5);
 				Overflow_Flag--;
 			}
+			printf("%d,",Overflow_Flag);
 			if(res)
 			{
-				printf("Rece<< %02X%02X%02X%02X%02X%02X%02X%02X;\r\n",Recebuf[0],Recebuf[1],Recebuf[2],Recebuf[3],Recebuf[4],Recebuf[5],Recebuf[6],Recebuf[7]);
+				printf("Rece2<< %02X%02X%02X%02X%02X%02X%02X%02X;\r\n",Recebuf[0],Recebuf[1],Recebuf[2],Recebuf[3],Recebuf[4],Recebuf[5],Recebuf[6],Recebuf[7]);
 				if(( Recebuf[1] == _uDat )&&( Recebuf[0] == 0x04 ))	//判断是否是本机数据
 				{
 					_uBuff[5] = Recebuf[2];	//金额1；
@@ -214,6 +216,7 @@ uint8_t Can_SendPBus_Com(uint8_t _uDat,uint8_t *_uBuff)
 			_uBuff[3] = Recebuf[4];	//卡号3；
 			_uBuff[4] = Recebuf[5];	//卡号4；
 			Overflow_Flag=10;
+			printf("%d,",Overflow_Flag);
 			while((res==0)&& (Overflow_Flag>0) )//接收到有数据
 			{
 //				res=Can_Receive_Msg(Recebuf);
@@ -230,9 +233,10 @@ uint8_t Can_SendPBus_Com(uint8_t _uDat,uint8_t *_uBuff)
 				OSTimeDlyHMSM(0, 0, 0, 5);
 				Overflow_Flag--;
 			}
+			printf("%d,",Overflow_Flag);
 			if(res)
 			{
-				printf("Rece<< %02X%02X%02X%02X%02X%02X%02X%02X;\r\n",Recebuf[0],Recebuf[1],Recebuf[2],Recebuf[3],Recebuf[4],Recebuf[5],Recebuf[6],Recebuf[7]);
+				printf("Rece3<< %02X%02X%02X%02X%02X%02X%02X%02X;\r\n",Recebuf[0],Recebuf[1],Recebuf[2],Recebuf[3],Recebuf[4],Recebuf[5],Recebuf[6],Recebuf[7]);
 				if(( Recebuf[1] == _uDat )&&( Recebuf[0] == 0x06 ))	//判断是否是本机数据
 				{
 					_uBuff[5] = Recebuf[2];	//金额1；
@@ -320,3 +324,10 @@ void Send_IAPDate(uint8_t _PackNo)
 		Can_Send_PackMsg(_PackNo,(uint8_t *)_uBuff);	//CAN 发送数据包
 	}
 }
+
+void Send_IAPDate0(uint8_t _PackNo)
+{
+	uint8_t _uBuff[8]={0};
+	Can_Send_PackMsg(_PackNo,(uint8_t *)_uBuff);	//CAN 发送数据包	
+}
+

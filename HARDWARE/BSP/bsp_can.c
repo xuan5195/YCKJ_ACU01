@@ -18,6 +18,7 @@ extern uint8_t g_RxMessFlag;	//CAN接收数据 标志
 //mode:0,普通模式;1,回环模式;
 //Fpclk1的时钟在初始化的时候设置为36M,如果设置CAN_Normal_Init(1,8,7,5,1);
 //则波特率为:36M/((1+8+7)*5)=450Kbps
+//则波特率为:36M/((1+13+2)*18)=125Kbps CAN_Normal_Init(1,13,2,18,1);
 //返回值:0,初始化OK;
 //    其他,初始化失败;
 
@@ -255,7 +256,7 @@ void Package_Send(u8 _mode,u8 *Package_Dat)
     	default:
     		break;
     }
-	printf("CAN_Send:%02X%02X%02X%02X%02X%02X%02X%02X; ",Package_SendBuf[0],Package_SendBuf[1],\
+	//printf("CAN_Send:%02X%02X%02X%02X%02X%02X%02X%02X; ",Package_SendBuf[0],Package_SendBuf[1],\
 	Package_SendBuf[2],Package_SendBuf[3],Package_SendBuf[4],Package_SendBuf[5],Package_SendBuf[6],Package_SendBuf[7]);
 	//res = Can_Send_Msg(Package_SendBuf,8);//发送8个字节
 	Can_Send_Msg(Package_SendBuf,8);//发送8个字节
