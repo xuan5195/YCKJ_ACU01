@@ -32,17 +32,17 @@ uint8_t Can_WriteLogitADD(uint8_t _LogitADD,uint8_t *_PhysicalADD)
     printf("Over=%d",Overflow_Flag);  
 	while((res==0)&& (Overflow_Flag>0) )//接收到有数据
 	{
-//		res=Can_Receive_Msg(Recebuf);
-//		if(Recebuf[5]!=_LogitADD)	res = 0;
-//		else	continue;
-		if(g_RxMessFlag == 0xAA)
-		{
-			for(i=0;i<8;i++){	Recebuf[i] = g_RxMessage[i];	g_RxMessage[i] = 0x00;	}
-			printf("Rece<<%02X%02X%02X%02X%02X%02X%02X%02X;\r\n",Recebuf[0],Recebuf[1],Recebuf[2],Recebuf[3],Recebuf[4],Recebuf[5],Recebuf[6],Recebuf[7]);
-			g_RxMessFlag = 0x00;
-			if((Recebuf[5]!=0xC2)&&(Recebuf[5]!=_LogitADD))	res = 0;
-			else {	res = 1;	continue;	}
-		}			
+		res=Can_Receive_Msg(Recebuf);
+		if((Recebuf[5]!=0xC2)&&(Recebuf[5]!=_LogitADD))	res = 0;
+		else	continue;
+//		if(g_RxMessFlag == 0xAA)
+//		{
+//			for(i=0;i<8;i++){	Recebuf[i] = g_RxMessage[i];	g_RxMessage[i] = 0x00;	}
+//			printf("Rece<<%02X%02X%02X%02X%02X%02X%02X%02X;\r\n",Recebuf[0],Recebuf[1],Recebuf[2],Recebuf[3],Recebuf[4],Recebuf[5],Recebuf[6],Recebuf[7]);
+//			g_RxMessFlag = 0x00;
+//			if((Recebuf[5]!=0xC2)&&(Recebuf[5]!=_LogitADD))	res = 0;
+//			else {	res = 1;	continue;	}
+//		}			
 		OSTimeDlyHMSM(0, 0, 0, 5);
 		Overflow_Flag--;
 	}
@@ -96,21 +96,21 @@ void Can_SendBroadcast_Com(uint8_t _WaterCost,uint8_t _CostNum)
 //读取未注册物理地址 
 uint8_t Can_ReadUnregistered(uint8_t *_uBuff)
 {
-	uint8_t i,Overflow_Flag=20;
+	uint8_t Overflow_Flag=20;
 	uint8_t CRC_Dat=0,res=0;
 	uint8_t Recebuf[8]={0x00};
 	while((res==0)&& (Overflow_Flag>0) )//接收到有数据
 	{
-//		res = Can_Receive_Msg(Recebuf);
-//		if(res != 0)	continue;
-		if(g_RxMessFlag == 0xAA)
-		{
-			for(i=0;i<8;i++){	Recebuf[i] = g_RxMessage[i];	g_RxMessage[i] = 0x00;	}
-			printf("Rece<<%02X%02X%02X%02X%02X%02X%02X%02X;\r\n",Recebuf[0],Recebuf[1],Recebuf[2],Recebuf[3],Recebuf[4],Recebuf[5],Recebuf[6],Recebuf[7]);
-			g_RxMessFlag = 0x00;
-			res = 1;
-			continue;
-		}			
+		res = Can_Receive_Msg(Recebuf);
+		if(res != 0)	continue;
+//		if(g_RxMessFlag == 0xAA)
+//		{
+//			for(i=0;i<8;i++){	Recebuf[i] = g_RxMessage[i];	g_RxMessage[i] = 0x00;	}
+//			printf("Rece<<%02X%02X%02X%02X%02X%02X%02X%02X;\r\n",Recebuf[0],Recebuf[1],Recebuf[2],Recebuf[3],Recebuf[4],Recebuf[5],Recebuf[6],Recebuf[7]);
+//			g_RxMessFlag = 0x00;
+//			res = 1;
+//			continue;
+//		}			
 		OSTimeDlyHMSM(0, 0, 0, 5);
 		Overflow_Flag--;
 	}
@@ -119,6 +119,7 @@ uint8_t Can_ReadUnregistered(uint8_t *_uBuff)
 	{
 		if( Recebuf[0] == 0xB3 )	
 		{
+			printf("Rece<<%02X%02X%02X%02X%02X%02X%02X%02X;\r\n",Recebuf[0],Recebuf[1],Recebuf[2],Recebuf[3],Recebuf[4],Recebuf[5],Recebuf[6],Recebuf[7]);
 			_uBuff[0] = Recebuf[1];	//卡机物理地址1；
 			_uBuff[1] = Recebuf[2];	//卡机物理地址2；
 			_uBuff[2] = Recebuf[3];	//卡机物理地址3；
@@ -138,30 +139,31 @@ uint8_t Can_SendPBus_Com(uint8_t _uDat,uint8_t *_uBuff)
 	uint8_t Runningbuf[8]={0x00};
 	uint8_t Overflow_Flag=10;
     uint8_t ReTemp=0;
-	uint8_t i,res=0;
+	uint8_t res=0;
 	Runningbuf[0] = _uDat;	//形参  逻辑地址
 	Package_Send(0x05,(uint8_t *)Runningbuf);
 	Overflow_Flag=10;
     printf("轮循 %d ",Overflow_Flag);
 	while((res==0)&& (Overflow_Flag>0) )//接收到有数据
 	{
-//		res=Can_Receive_Msg(Recebuf);
-//		if(Recebuf[1]!=_uDat)	res = 0;
-//		else	continue;
-		if(g_RxMessFlag == 0xAA)
-		{
-			for(i=0;i<8;i++){	Recebuf[i] = g_RxMessage[i];	g_RxMessage[i] = 0x00;	}
-			//printf("Rece<<%02X%02X%02X%02X%02X%02X%02X%02X;\r\n",Recebuf[0],Recebuf[1],Recebuf[2],Recebuf[3],Recebuf[4],Recebuf[5],Recebuf[6],Recebuf[7]);
-			g_RxMessFlag = 0x00;
-			if(Recebuf[1]!=_uDat)	res = 0;
-			else	{	res = 1;	continue;	}		
-		}
+		res=Can_Receive_Msg(Recebuf);
+		if(Recebuf[1]!=_uDat)	res = 0;
+		else	continue;
+//		if(g_RxMessFlag == 0xAA)
+//		{
+//			for(i=0;i<8;i++){	Recebuf[i] = g_RxMessage[i];	g_RxMessage[i] = 0x00;	}
+//			//printf("Rece<<%02X%02X%02X%02X%02X%02X%02X%02X;\r\n",Recebuf[0],Recebuf[1],Recebuf[2],Recebuf[3],Recebuf[4],Recebuf[5],Recebuf[6],Recebuf[7]);
+//			g_RxMessFlag = 0x00;
+//			if(Recebuf[1]!=_uDat)	res = 0;
+//			else	{	res = 1;	continue;	}		
+//		}
 		OSTimeDlyHMSM(0, 0, 0, 5);
 		Overflow_Flag--;
 	}
-    printf("- %d;  \r\n",Overflow_Flag);
+    printf("- %d;  ",Overflow_Flag);
 	if(res)
 	{
+		//printf("\r\n");
 		printf("Rece<< %02X%02X%02X%02X%02X%02X%02X%02X;\r\n",Recebuf[0],Recebuf[1],Recebuf[2],Recebuf[3],Recebuf[4],Recebuf[5],Recebuf[6],Recebuf[7]);
 		if( ( Recebuf[1] == _uDat )&&(Recebuf[0] == 0x02 ))		ReTemp = 0x02;	//无数据
 		else if( ( Recebuf[1] == _uDat )&&(Recebuf[0] == 0x03 ))	//插卡数据包1
@@ -175,17 +177,17 @@ uint8_t Can_SendPBus_Com(uint8_t _uDat,uint8_t *_uBuff)
 			printf("%d,",Overflow_Flag);
 			while((res==0)&& (Overflow_Flag>0) )//接收到有数据
 			{
-//				res=Can_Receive_Msg(Recebuf);
-//				if(Recebuf[1]!=_uDat)	res = 0;
-//				else	continue;
-				if(g_RxMessFlag == 0xAA)
-				{
-					for(i=0;i<8;i++){	Recebuf[i] = g_RxMessage[i];	g_RxMessage[i] = 0x00;	}
-					//printf("Rece<<%02X%02X%02X%02X%02X%02X%02X%02X;\r\n",Recebuf[0],Recebuf[1],Recebuf[2],Recebuf[3],Recebuf[4],Recebuf[5],Recebuf[6],Recebuf[7]);
-					g_RxMessFlag = 0x00;
-					if(Recebuf[1]!=_uDat)	res = 0;
-					else	{	res = 1;	continue;	}		
-				}
+				res=Can_Receive_Msg(Recebuf);
+				if(Recebuf[1]!=_uDat)	res = 0;
+				else	continue;
+//				if(g_RxMessFlag == 0xAA)
+//				{
+//					for(i=0;i<8;i++){	Recebuf[i] = g_RxMessage[i];	g_RxMessage[i] = 0x00;	}
+//					//printf("Rece<<%02X%02X%02X%02X%02X%02X%02X%02X;\r\n",Recebuf[0],Recebuf[1],Recebuf[2],Recebuf[3],Recebuf[4],Recebuf[5],Recebuf[6],Recebuf[7]);
+//					g_RxMessFlag = 0x00;
+//					if(Recebuf[1]!=_uDat)	res = 0;
+//					else	{	res = 1;	continue;	}		
+//				}
 				OSTimeDlyHMSM(0, 0, 0, 5);
 				Overflow_Flag--;
 			}
@@ -215,21 +217,21 @@ uint8_t Can_SendPBus_Com(uint8_t _uDat,uint8_t *_uBuff)
 			_uBuff[2] = Recebuf[3];	//卡号2；
 			_uBuff[3] = Recebuf[4];	//卡号3；
 			_uBuff[4] = Recebuf[5];	//卡号4；
-			Overflow_Flag=10;
+			Overflow_Flag=10;res=0;
 			printf("%d,",Overflow_Flag);
 			while((res==0)&& (Overflow_Flag>0) )//接收到有数据
 			{
-//				res=Can_Receive_Msg(Recebuf);
-//				if(Recebuf[1]!=_uDat)	res = 0;
-//				else	continue;
-				if(g_RxMessFlag == 0xAA)
-				{
-					for(i=0;i<8;i++){	Recebuf[i] = g_RxMessage[i];	g_RxMessage[i] = 0x00;	}
-					//printf("Rece<<%02X%02X%02X%02X%02X%02X%02X%02X;\r\n",Recebuf[0],Recebuf[1],Recebuf[2],Recebuf[3],Recebuf[4],Recebuf[5],Recebuf[6],Recebuf[7]);
-					g_RxMessFlag = 0x00;
-					if(Recebuf[1]!=_uDat)	res = 0;
-					else	{	res = 1;	continue;	}		
-				}
+				res=Can_Receive_Msg(Recebuf);
+				if(Recebuf[1]!=_uDat)	res = 0;
+				else	continue;
+//				if(g_RxMessFlag == 0xAA)
+//				{
+//					for(i=0;i<8;i++){	Recebuf[i] = g_RxMessage[i];	g_RxMessage[i] = 0x00;	}
+//					//printf("Rece<<%02X%02X%02X%02X%02X%02X%02X%02X;\r\n",Recebuf[0],Recebuf[1],Recebuf[2],Recebuf[3],Recebuf[4],Recebuf[5],Recebuf[6],Recebuf[7]);
+//					g_RxMessFlag = 0x00;
+//					if(Recebuf[1]!=_uDat)	res = 0;
+//					else	{	res = 1;	continue;	}		
+//				}
 				OSTimeDlyHMSM(0, 0, 0, 5);
 				Overflow_Flag--;
 			}

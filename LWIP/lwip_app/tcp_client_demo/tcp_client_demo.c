@@ -130,11 +130,14 @@ static void tcp_client_thread(void *arg)
 						tcp_client_cardsendbuf[30] = p[12];	//卡金额
 						tcp_client_cardsendbuf[31] = p[14];	//卡机逻辑地址
 						tcp_client_cardsendbuf[32] = p[15];	//通信码
-						//printf("\r\n插卡、拔卡数据包发送\r\n");
-						if(p[1]==0x11)		printf("\r\n插卡 数据包发送\r\n");
-						else if(p[1]==0x13)	printf("\r\n拔卡 数据包发送\r\n");
-						err = netconn_write(tcp_clientconn ,tcp_client_cardsendbuf,tcp_client_cardsendbuf[1],NETCONN_COPY); //发送tcp_server_sentbuf中的数据
-						if(err != ERR_OK)		printf("发送失败\r\n");
+						if((p[2]==0x00)&&(p[3]==0x00)&&(p[4]==0x00)&&(p[5]==0x00)&&(p[6]==0x00)&&(p[7]==0x00));
+						else
+						{
+							if(p[1]==0x11)		printf("\r\n插卡 数据包发送\r\n");
+							else if(p[1]==0x13)	printf("\r\n拔卡 数据包发送\r\n");
+							err = netconn_write(tcp_clientconn ,tcp_client_cardsendbuf,tcp_client_cardsendbuf[1],NETCONN_COPY); //发送tcp_server_sentbuf中的数据
+							if(err != ERR_OK)		printf("发送失败\r\n");
+						}
 					}
 					myfree(SRAMIN,p);	  
 				}
