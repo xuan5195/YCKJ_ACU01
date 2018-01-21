@@ -13,7 +13,8 @@
 
 #define ADD_SIZE	BUSNUM_SIZE
 extern uint8_t g_RUNDate[BUSNUM_SIZE+1][14];    //运行数据；
-extern uint8_t KJ_Versions[BUSNUM_SIZE];	//卡机版本号
+extern uint8_t KJ_Versions[BUSNUM_SIZE+1];		//卡机版本号
+extern uint8_t KJ_NonResponse[BUSNUM_SIZE+1];	//卡机无回复标志 当数值大于20时，清卡机；在数值为5，10，15时发起一次写逻辑地址操作
 
 /*
 *********************************************************************************************************
@@ -87,7 +88,8 @@ uint8_t Delete_LogicADD(uint8_t Logic_no)
             AT24CXX_WriteOneByte( (Start_ADD + ( i * 5 )) | Logic_ADD, 0x00 );            
         }
     }
-	g_RUNDate[Logic_no][0] = 0x00;
+	g_RUNDate[Logic_no][0] = 0x00;g_RUNDate[Logic_no][1] = 0x00;g_RUNDate[Logic_no][2] = 0x00;
+//	for(i=0;i<15;i++)	g_RUNDate[Logic_no][i] = 0x00;	
 	Logic_Count = AT24CXX_ReadOneByte(COUNT_ADD);   //读取现已录入 数量；
 	AT24CXX_WriteOneByte(COUNT_ADD,Logic_Count-1);
 	return (Logic_Count-1);
@@ -123,6 +125,7 @@ void PowerUPLogitADDCheck(void)
 			else
 			{
 				KJ_Versions[i] = Can_WriteLogitADD(i,(uint8_t *)Physical_Temp);
+				KJ_NonResponse[i]=0;
 				if(KJ_Versions[i] != 0x00)	//分别逻辑地址成功
 				{
 					++g_RUNDate[0][0]; 		//总数+1；该地址使用；

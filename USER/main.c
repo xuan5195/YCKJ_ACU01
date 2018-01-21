@@ -30,7 +30,8 @@
 uint8_t g_RxMessage[8]={0};	//CAN接收数据
 uint8_t g_RxMessFlag=0;		//CAN接收数据 标志
 uint8_t g_RUNDate[BUSNUM_SIZE+1][14]={0};    	//运行数据；
-uint8_t KJ_Versions[BUSNUM_SIZE]={0};			//卡机版本号缓存
+uint8_t KJ_Versions[BUSNUM_SIZE+1]={0};			//卡机版本号缓存
+uint8_t KJ_NonResponse[BUSNUM_SIZE+1]={0};		//卡机无回复标志 当数值大于20时，清卡机；在数值为5，10，15时发起一次写逻辑地址操作
 uint8_t g_PowerUpFlag=0;				//上电标志，0xAA上电完成
 uint8_t g_lwipADD[4]={0};				//远端IP地址
 uint16_t g_lwipPort=0;					//远端端口号
@@ -260,7 +261,6 @@ void led_task(void *pdata)
     OSTimeDlyHMSM(0,0,0,200);  	//延时200ms
     printf("\r\n未注册广播! \r\n");      
 	Can_UnregisteredBroadcast();   //未注册广播
-    printf("\r\n");      
 	LED0 = 1;LED1 = 1;LED2 = 1;
 	Old_CostNum = g_CostNum;	//流量计脉冲数 每升水计量周期
 	Old_WaterCost = g_WaterCost;//WaterCost=水费 最小扣款金额 0.005元
@@ -281,8 +281,16 @@ void led_task(void *pdata)
             if( u8Temp <= ( BUSNUM_SIZE+1 ) )
 			{
 				KJ_Versions[u8Temp] = Can_WriteLogitADD(u8Temp,(uint8_t *)PhysicalADD);
+				KJ_NonResponse[u8Temp]=0;
 				if(KJ_Versions[u8Temp]==0x00)	printf("Ver[%02d]=%02X,分配失败！\r\n",u8Temp,KJ_Versions[u8Temp]);
-				else							printf("Ver[%02d]=%02X,分配成功！\r\n",u8Temp,KJ_Versions[u8Temp]);
+				else
+				{
+					printf("Ver[%02d]=%02X,分配成功！\r\n",u8Temp,KJ_Versions[u8Temp]);
+					++g_RUNDate[0][0]; 				//总数+1；该地址使用；
+					g_RUNDate[u8Temp][0] = 0x80;	//总数+1；该地址使用；
+					g_RUNDate[u8Temp][1] = PhysicalADD[0]; g_RUNDate[u8Temp][2] = PhysicalADD[1];	//卡机SN
+					g_RUNDate[u8Temp][3] = PhysicalADD[2]; g_RUNDate[u8Temp][4] = PhysicalADD[3];
+				}
 			}
 		}
 		ucCount--;
@@ -295,19 +303,20 @@ void led_task(void *pdata)
 	Can_SendBroadcast_Key((uint8_t *)FM1702_Key);
 	g_PowerUpFlag = 0xAA;	//初始化完成
     printf("\r\n上电检测未注册超时，进入正常待机状态;\r\n"); 
-//	IWDG_Init(6,1024);    //与分频数为64,重载值为1024,溢出时间为6s	   
+	IWDG_Init(6,1024);    //与分频数为64,重载值为1024,溢出时间为6s	   
 	while(1)
 	{
-//		IWDG_Feed();	//增加看门狗
+		IWDG_Feed();	//增加看门狗
 		if(g_IAPFlag==0xD0)	//IAP升级中
 		{
 			for(i=0;i<168;i++)
 			{
-//				IWDG_Feed();	//增加看门狗
+				IWDG_Feed();	//增加看门狗
 				Send_IAPDate(i);
 				OSTimeDlyHMSM(0,0,0,100);  //延时10ms
 			}
-			Send_IAPDate0(0xFC);	//让卡机跳转并运行
+			SendSerialAsk(0xDD);	//在线升级完成回复给UART3 USB转串口上
+//			Send_IAPDate0(0xFC);	//让卡机跳转并运行
 			g_IAPFlag = 0;
 		}
 		else if(g_IAPFlag==0xD1)	//擦除FLash
@@ -323,6 +332,11 @@ void led_task(void *pdata)
 		else if(g_IAPFlag==0xD3)	//跳转APP
 		{
 			Send_IAPDate0(0xFC);			
+			g_IAPFlag = 0;
+		}
+		else if(g_IAPFlag==0xD4)	//复位卡机
+		{
+			Package_Send(0xD4,(u8 *)PhysicalADD);			
 			g_IAPFlag = 0;
 		}
 		else
@@ -386,29 +400,28 @@ void led_task(void *pdata)
 
 			if( Led_TaskCount > (BUSNUM_SIZE+1) )    
 			{   
-				printf("\r\n\r\n");    	Led_TaskCount = 0;  
-				if(CycleCount<50)		CycleCount++;	
+				printf("\r\n\r\n"); 	Led_TaskCount = 0;  
+				if(CycleCount<250)		CycleCount++;	//约5分钟进入查找一次	
 				else	
 				{	
 					CycleCount = 0;
-	//				if(Binary_searchSN()==0x00)
-	//				{
-	//					OSTimeDlyHMSM(0,0,0,50);  //延时50ms
-	//					Can_SendBroadcast_Com(g_WaterCost,g_CostNum);
-	//					OSTimeDlyHMSM(0,0,0,200);  //延时200ms
-	//					Can_SendBroadcast_Key((uint8_t *)FM1702_Key);
-	//					OSTimeDlyHMSM(0,0,0,200);  //延时200ms
-	//					g_NewAddFlag = 0xAA;
-	//				}					
+					if( Binary_searchSN() != 0x00 )	//在线查找法，1秒超时机制
+					{
+						OSTimeDlyHMSM(0,0,0,20);  //延时20ms
+						Can_SendBroadcast_Com(g_WaterCost,g_CostNum);
+						OSTimeDlyHMSM(0,0,0,20);  //延时20ms
+						Can_SendBroadcast_Key((uint8_t *)FM1702_Key);
+						g_NewAddFlag = 0xAA;		//新增加标志，用于标记让区域模块发送心跳包
+					}					
+					if(BroadTime>0x000F0000)	//
+					{
+						BroadTime=0;	printf("定时广播费率, ");
+						Can_SendBroadcast_Com(g_WaterCost,g_CostNum);	//定时广播水费一次
+					}
+					else 	{	BroadTime++;	}
 				}
 			}            
-			else Led_TaskCount++;  
-			if(BroadTime>0x000F0000)	//20ms *1000
-			{
-				BroadTime=0;
-				Can_SendBroadcast_Com(g_WaterCost,g_CostNum);
-			}
-			else BroadTime++;
+			else {	Led_TaskCount++;	}  
 		}
 		OSTimeDlyHMSM(0,0,0,10);  //延时10ms
  	}

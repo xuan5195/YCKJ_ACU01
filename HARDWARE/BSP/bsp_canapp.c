@@ -72,7 +72,7 @@ void Can_SendBroadcast_Key(uint8_t *_uBuff)
 	Runningbuf[4] = *(_uBuff+4);	//
 	Runningbuf[5] = *(_uBuff+5);	//
 	Runningbuf[6] = *(_uBuff+6);	//¿é
-	//printf(">>>>>>>>>¹ã²¥ RFID_Key %2X%2X%2X%2X%2X%2X,¿éµØÖ·£º%d\r\n",Runningbuf[0],Runningbuf[1],Runningbuf[2],Runningbuf[3],Runningbuf[4],Runningbuf[5],Runningbuf[6]);
+	printf(">>>>>>>>>¹ã²¥ RFID_Key %2X%2X%2X%2X%2X%2X,¿éµØÖ·£º%d\r\n",Runningbuf[0],Runningbuf[1],Runningbuf[2],Runningbuf[3],Runningbuf[4],Runningbuf[5],Runningbuf[6]);
 	Package_Send(0x03,(uint8_t *)Runningbuf);
 }
 //Î´×¢²á¹ã²¥ 

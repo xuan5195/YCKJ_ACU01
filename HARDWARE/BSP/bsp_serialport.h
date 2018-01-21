@@ -11,5 +11,6 @@
 
 void SendSerialPort(uint8_t *SerialDat);
 void ReceivePacketDat(uint8_t *SerialDat);
+void SendSerialAsk(uint8_t _Dat);
 
 #endif

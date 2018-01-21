@@ -15,7 +15,8 @@
 
 uint8_t Overflow_Flag;	//等待超时标志
 extern uint8_t g_RUNDate[BUSNUM_SIZE+1][14];    //运行数据；
-extern uint8_t KJ_Versions[BUSNUM_SIZE];				//卡机版本号
+extern uint8_t KJ_Versions[BUSNUM_SIZE+1];		//卡机版本号
+extern uint8_t KJ_NonResponse[BUSNUM_SIZE+1];	//卡机无回复标志 当数值大于20时，清卡机；在数值为5，10，15时发起一次写逻辑地址操作
 
 extern uint8_t g_CostNum;		//流量计脉冲数 每升水计量周期
 extern uint8_t g_WaterCost;		//WaterCost=水费 最小扣款金额 0.005元
@@ -272,7 +273,7 @@ void ReadRunningData(uint8_t _no)
 	//							-->有数据	-->发送取数据将卡机数据取回
 	//											并回复取回成功
 	uint8_t uDat=0,TempBuff[10];
-	uint8_t uBuff[8];
+	uint8_t uBuff[8]={0},uTempSN[4]={0};
     printf("%2d; ",_no); 
 	if((g_RUNDate[_no][0]&0x80) == 0x80)	//正常数据
 	{	//该逻辑地址使用
@@ -285,13 +286,30 @@ void ReadRunningData(uint8_t _no)
 			if( uDat == 0x02 )		//无数据	
 			{
 				g_RUNDate[_no][0] = g_RUNDate[_no][0]&(~0x23);//清失联标记、低三位
+				KJ_NonResponse[_no]=0;
 			}
 			else if( uDat == 0x00 )	//失联
 			{
 				g_RUNDate[_no][0] = g_RUNDate[_no][0]|0x20;//写入失联标记
+				if(KJ_NonResponse[_no]<20)
+				{
+					if(KJ_NonResponse[_no]%5==1)	
+					{
+						uTempSN[0] = g_RUNDate[_no][1];	uTempSN[1] = g_RUNDate[_no][2];	
+						uTempSN[2] = g_RUNDate[_no][3];	uTempSN[3] = g_RUNDate[_no][4];	//卡机SN	
+						Can_WriteLogitADD(_no,(uint8_t *)uTempSN);	//写入逻辑地址
+					}
+					KJ_NonResponse[_no] = KJ_NonResponse[_no]+1;
+				}
+				else	//超过次数，直接清该卡机
+				{
+					Delete_LogicADD(_no);	//分配不成功，清掉这逻辑地址
+					KJ_Versions[_no] = 0;	KJ_NonResponse[_no]=0;
+				}
 			}	
 			else//有数据
 			{
+				KJ_NonResponse[_no]=0;
 				if(TempBuff[0]==0x05)		g_RUNDate[_no][0] = g_RUNDate[_no][0]|0x01;	//写入插卡标记
 				else if(TempBuff[0]==0x06)	g_RUNDate[_no][0] = g_RUNDate[_no][0]|0x02;	//写入拔卡标记
 				g_RUNDate[_no][5] = TempBuff[1];	//卡号1；
@@ -445,20 +463,43 @@ void WriteRFIDData(uint8_t *_WriteDat)
 //	{
 //		PBus_Count = 0x00;
 //		g_RUNDate[_LogitADD][0] = 0x80;	//表示卡机使用
-//		ReTemp = PBusDat[8];		//数据正确 
+//		ReTemp = PBusDat[8];			//数据正确 
 //	}
 //	else	ReTemp = 0x00;	//数据接收错误  a.超时；b.数据错
 //	return 	ReTemp;
 //}
-//折半查找法 每次只查找一个；
+//折半查找法 a.广播->等待数据接收->接收注册->等待超时并退出。没有接收到计时1秒超时机制
 //_Dat:查找标记
 uint8_t Binary_searchSN(void)
 {	
-	uint8_t uDat=0;
-//	uint8_t ucADDDat[4]={0x16,0x01,0x01,0x01};
-//	LED1 = 0;
-//	uDat = SendPBus_SearchDat(0xB1,(uint8_t *)ucADDDat);
-//	LED1 = 1;
+	uint8_t u8Temp=0,uDat=0,uTCount=10,uTempSN[4]={0};
+	printf("\r\n广播查找!\r\n");      
+	Can_UnregisteredBroadcast();   //未注册广播
+	while(uTCount--)
+	{
+		printf("%02d. ",uTCount);
+		if(Can_ReadUnregistered((uint8_t *)uTempSN)!=0x00)  //有数据 检测一次100ms
+		{
+			uDat++;	uTCount = 10;	//读取到数据，重新计时1秒
+            printf("物理：%02X%02X%02X%02X;",uTempSN[0],uTempSN[1],uTempSN[2],uTempSN[3]);   
+            u8Temp = Distribute_LogicADD((uint8_t *)uTempSN);	//分配物理地址
+            printf("逻辑:%0d;",u8Temp); 
+            if( u8Temp <= ( BUSNUM_SIZE+1 ) )
+			{
+				KJ_Versions[u8Temp] = Can_WriteLogitADD(u8Temp,(uint8_t *)uTempSN);
+				KJ_NonResponse[u8Temp]=0;
+				if(KJ_Versions[u8Temp]==0x00)	printf("Ver[%02d]=%02X,分配失败！\r\n",u8Temp,KJ_Versions[u8Temp]);
+				else
+				{
+					printf("Ver[%02d]=%02X,分配成功！\r\n",u8Temp,KJ_Versions[u8Temp]);
+					++g_RUNDate[0][0]; 					g_RUNDate[u8Temp][0] = 0x80;		//总数+1；该地址使用；
+					g_RUNDate[u8Temp][1] = uTempSN[0]; 	g_RUNDate[u8Temp][2] = uTempSN[1];	//卡机SN
+					g_RUNDate[u8Temp][3] = uTempSN[2]; 	g_RUNDate[u8Temp][4] = uTempSN[3];
+				}
+			}
+		}
+	}
+	printf("查询结束-----------\r\n");      
 	return uDat;
 }
 

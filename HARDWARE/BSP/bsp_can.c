@@ -253,6 +253,10 @@ void Package_Send(u8 _mode,u8 *Package_Dat)
 			Package_SendBuf[6] = Package_Dat[5];	//错误代码
 			Package_SendBuf[7] = Package_Dat[6];	//通信码
 			break;
+		case 0xD4:	//复位卡机
+ 			Package_SendBuf[0] = 0xA4;
+			Package_SendBuf[1] = 0xA4;
+			break;
     	default:
     		break;
     }

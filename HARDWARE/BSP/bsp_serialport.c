@@ -160,6 +160,9 @@ void SendSerialPort(uint8_t *SerialDat)
 			g_IAPFlag = 0xD2;
 			break;	
 		case 0xD3:	//跳转启动
+			g_IAPFlag = 0xD3;
+			break;	        
+		case 0xD4:	//复位卡机
 			g_IAPFlag = 0xD4;
 			break;	        
 		default:
@@ -215,4 +218,13 @@ void ReceivePacketDat(uint8_t *SerialDat)
 	comSendBuf(SERIALPORT_COM, (uint8_t *)Runningbuf, 4);		
 }
 
+void SendSerialAsk(uint8_t _Dat)
+{
+	uint8_t Runningbuf[8]={0x00};
+	Runningbuf[0] = 0xF4;
+	Runningbuf[1] = 0x04;	//长度
+	Runningbuf[2] = _Dat;	//命令帧
+	Runningbuf[Runningbuf[1]-1] = CRC8_Table(Runningbuf,Runningbuf[1]-1);	//CRC校验位
+	comSendBuf(SERIALPORT_COM, (uint8_t *)Runningbuf, Runningbuf[1]);
+}
 
