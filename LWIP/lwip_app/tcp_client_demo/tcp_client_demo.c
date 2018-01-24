@@ -36,7 +36,7 @@ extern OS_EVENT * q_msg_ser;		//消息队列 服务器回复数据
 //TCP客户端任务
 #define TCPCLIENT_PRIO		8
 //任务堆栈大小
-#define TCPCLIENT_STK_SIZE	350
+#define TCPCLIENT_STK_SIZE	400
 //任务堆栈
 OS_STK TCPCLIENT_TASK_STK[TCPCLIENT_STK_SIZE];
 
@@ -91,10 +91,21 @@ static void tcp_client_thread(void *arg)
 				if((tcp_client_flag & LWIP_SEND_HeartbeatDATA) == LWIP_SEND_HeartbeatDATA) //有心跳数据包要发送
                 {
 					LED2 = 1;
-					if(i_SendCount>=BUSNUM_SIZE)	i_SendCount = 1;
-					else							i_SendCount++;
+					if(g_RUNDate[0][0] > 0)
+					{
+						while(1)
+						{
+							if(i_SendCount>=BUSNUM_SIZE)	i_SendCount = 1;
+							else							i_SendCount++;
+							if((g_RUNDate[i_SendCount][0]&0xC0) != 0x00)	break;//卡机存在 发送心跳包
+						}
+					}
+					else
+					{
+						i_SendCount = 1;
+					}
 					printf("\r\n心跳包：%2d\r\n",i_SendCount);
-					if((g_RUNDate[i_SendCount][0]&0xC0) != 0x00)	//卡机存在 发送心跳动包
+					if((g_RUNDate[i_SendCount][0]&0xC0) != 0x00)	//卡机存在 发送心跳包
 					{
 						if(SendRecvCount<200)	SendRecvCount++;
 						tcp_client_heartbeatsendbuf[23] = g_RUNDate[i_SendCount][1]; tcp_client_heartbeatsendbuf[24] = g_RUNDate[i_SendCount][2];   //卡机SN
@@ -211,6 +222,7 @@ static void tcp_client_thread(void *arg)
 							{
 //								g_CostNum = tcp_client_recvbuf[10];	//流量计脉冲数 每升水计量周期
 //								g_WaterCost = tcp_client_recvbuf[9];//WaterCost=水费 最小扣款金额 0.005元
+								printf("心跳包服务器回复 卡号：%02X%02X%02X%02X,逻辑地址%02X \r\n",tcp_client_recvbuf[5],tcp_client_recvbuf[6],tcp_client_recvbuf[7],tcp_client_recvbuf[8],_ucNo);
 								ser_Date[0] = 0xCC;	//标志心跳包
 								ser_Date[1] = tcp_client_recvbuf[5];	//卡机SN 1
 								ser_Date[2] = tcp_client_recvbuf[6];	//卡机SN 2
@@ -224,7 +236,7 @@ static void tcp_client_thread(void *arg)
 							}
 							else if((tcp_client_recvbuf[2]==0x12)&&(tcp_client_recvbuf[1]==0x12))//插卡数据包
 							{
-								printf("插卡数据包 卡号：%02X%02X%02X%02X",tcp_client_recvbuf[8],tcp_client_recvbuf[9],tcp_client_recvbuf[10],tcp_client_recvbuf[11]);
+								printf("插卡数据包服务器回复 卡号：%02X%02X%02X%02X",tcp_client_recvbuf[8],tcp_client_recvbuf[9],tcp_client_recvbuf[10],tcp_client_recvbuf[11]);
 								printf("金额：%6d;   ", (tcp_client_recvbuf[13]<<16)|(tcp_client_recvbuf[14]<<8)|tcp_client_recvbuf[15]);
 								printf("通信码%02X \r\n",tcp_client_recvbuf[17]);
 								ser_Date[0] = 0xAA;	//标志有数据

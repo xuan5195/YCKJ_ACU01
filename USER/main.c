@@ -164,7 +164,7 @@ void key_task(void *pdata)
 			if(SerialSetFlag==0x00)	//串口设置标志，修改配置后，重启才能与服务器通信
 			{
 				if(Key_Task_Count<6000) {	Key_Task_Count++;	}
-				else 					{	Key_Task_Count = 0;	} //周期为300秒; 6000*50ms=300 000ms=300s
+				else 					{	Key_Task_Count = 0;	} //周期为300秒; 6000*50ms=300 000ms=300s =5min
 				if(g_NewAddFlag==0xAA)	{	g_NewAddFlag=0x00;	HeartSendCount=1000;}
 				if(HeartSendCount<80)	{	HeartSendCount++;	PrintfCount=0;} //去掉刚上电时卡机还没注册；
 				else if(HeartSendCount<1800)
@@ -180,15 +180,15 @@ void key_task(void *pdata)
 				else
 				{
 					HeartSendCount = 5000;
-//					#if TestFlag
-//						if((Key_Task_Count%50)==1)  //2.5秒钟发一次；//测试使用
-//							tcp_client_flag |= LWIP_SEND_HeartbeatDATA; //标记LWIP有心跳数据包要发送;				
-//					#else
-						if((Key_Task_Count%200)==1)  //10秒钟发一次；
-							tcp_client_flag |= LWIP_SEND_HeartbeatDATA; //标记LWIP有心跳数据包要发送;				
-//					#endif
+					if(g_RUNDate[0][0] > 0)
+					{
+						if((Key_Task_Count%(6000/g_RUNDate[0][0]))==1)  //5min内发送卡机全部 6000/58 = 103 103*50ms
+						tcp_client_flag |= LWIP_SEND_HeartbeatDATA; //标记LWIP有心跳数据包要发送;				
+					}
+//					if((Key_Task_Count%200)==1)  //10秒钟发一次；
+//					tcp_client_flag |= LWIP_SEND_HeartbeatDATA; //标记LWIP有心跳数据包要发送;				
 				}
-				OSTimeDlyHMSM(0,0,0,50);  //延时50ms						
+				OSTimeDlyHMSM(0,0,0,45);  //延时50ms						
 			}
 		}
 		//串口3检测 参数设置
@@ -315,13 +315,16 @@ void led_task(void *pdata)
 				Send_IAPDate(i);
 				OSTimeDlyHMSM(0,0,0,100);  //延时10ms
 			}
-			SendSerialAsk(0xDD);	//在线升级完成回复给UART3 USB转串口上
+			OSTimeDlyHMSM(0,0,0,100);  //延时100ms
+			SendSerialAsk(0xE0);	//在线升级完成回复给UART3 USB转串口上
 //			Send_IAPDate0(0xFC);	//让卡机跳转并运行
 			g_IAPFlag = 0;
 		}
 		else if(g_IAPFlag==0xD1)	//擦除FLash
 		{
 			Send_IAPDate0(0xFD);
+			OSTimeDlyHMSM(0,0,0,200);  	//延时100ms
+			SendSerialAsk(0xE1);		//完成回复给UART3 USB转串口上
 			g_IAPFlag = 0;
 		}
 		else if(g_IAPFlag==0xD2)	//显示FLash内数据
@@ -332,11 +335,15 @@ void led_task(void *pdata)
 		else if(g_IAPFlag==0xD3)	//跳转APP
 		{
 			Send_IAPDate0(0xFC);			
+			OSTimeDlyHMSM(0,0,0,200);  	//延时100ms
+			SendSerialAsk(0xE3);		//完成回复给UART3 USB转串口上
 			g_IAPFlag = 0;
 		}
 		else if(g_IAPFlag==0xD4)	//复位卡机
 		{
 			Package_Send(0xD4,(u8 *)PhysicalADD);			
+			OSTimeDlyHMSM(0,0,0,200);  	//延时100ms
+			SendSerialAsk(0xE4);		//完成回复给UART3 USB转串口上
 			g_IAPFlag = 0;
 		}
 		else
@@ -401,15 +408,15 @@ void led_task(void *pdata)
 			if( Led_TaskCount > (BUSNUM_SIZE+1) )    
 			{   
 				printf("\r\n\r\n"); 	Led_TaskCount = 0;  
-				if(CycleCount<250)		CycleCount++;	//约5分钟进入查找一次	
+				if(CycleCount<100)		CycleCount++;	//约2分钟进入查找一次	
 				else	
 				{	
 					CycleCount = 0;
-					if( Binary_searchSN() != 0x00 )	//在线查找法，1秒超时机制
+					if( Binary_searchSN() != 0x00 )		//在线查找法，1秒超时机制
 					{
-						OSTimeDlyHMSM(0,0,0,20);  //延时20ms
+						OSTimeDlyHMSM(0,0,0,20);  	//延时20ms
 						Can_SendBroadcast_Com(g_WaterCost,g_CostNum);
-						OSTimeDlyHMSM(0,0,0,20);  //延时20ms
+						OSTimeDlyHMSM(0,0,0,20);  	//延时20ms
 						Can_SendBroadcast_Key((uint8_t *)FM1702_Key);
 						g_NewAddFlag = 0xAA;		//新增加标志，用于标记让区域模块发送心跳包
 					}					

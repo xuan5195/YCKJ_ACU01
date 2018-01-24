@@ -123,7 +123,7 @@ u8 DM9000_Init(void)
 	//初始化MAC地址
 	dm9000cfg.mac_addr[0]=2;
 	dm9000cfg.mac_addr[1]=0;
-	dm9000cfg.mac_addr[2]=(temp>>24)&0xFF;
+	dm9000cfg.mac_addr[2]=(temp>>24)&0xFF;	//低四字节用STM32的唯一ID
 	dm9000cfg.mac_addr[3]=(temp>>16)&0xFF;	//低三字节用STM32的唯一ID
 	dm9000cfg.mac_addr[4]=(temp>>8)&0xFF;
 	dm9000cfg.mac_addr[5]=temp&0xFF;

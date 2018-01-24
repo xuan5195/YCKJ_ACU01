@@ -165,6 +165,21 @@ void SendSerialPort(uint8_t *SerialDat)
 		case 0xD4:	//复位卡机
 			g_IAPFlag = 0xD4;
 			break;	        
+//		case 0xEE:	//状态回复：区域模块初始化完成
+//			Runningbuf[2] = 0xEE;
+//			break;	        
+//		case 0xE4:	//状态回复：卡机复位完成
+//			Runningbuf[2] = 0xE4;
+//			break;	        
+//		case 0xE1:	//状态回复：擦除卡机FLash完成
+//			Runningbuf[2] = 0xE4;
+//			break;	        
+//		case 0xE0:	//状态回复：在线升级完成
+//			Runningbuf[2] = 0xE0;
+//			break;	        
+//		case 0xE3:	//状态回复：跳转完成
+//			Runningbuf[2] = 0xE3;
+//			break;	        
 		default:
         	break;
 	}
@@ -220,7 +235,7 @@ void ReceivePacketDat(uint8_t *SerialDat)
 
 void SendSerialAsk(uint8_t _Dat)
 {
-	uint8_t Runningbuf[8]={0x00};
+	uint8_t Runningbuf[4]={0x00};
 	Runningbuf[0] = 0xF4;
 	Runningbuf[1] = 0x04;	//长度
 	Runningbuf[2] = _Dat;	//命令帧
