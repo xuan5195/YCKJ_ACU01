@@ -28,9 +28,17 @@ void LogitADDWrite(uint8_t _AddDat);
 void Write_localIP(uint8_t *_Temp);	//本机IP
 void Write_netmask(uint8_t *_Temp);	//子网掩码:255.255.255.0
 void Write_gateway(uint8_t *_Temp);	//默认网关:192.168.1.1
+void Write_hostname(uint8_t *_Temp);//写入域名
+void Clear_hostname(void);			//擦除域名
+
+
 void Read_localIP(uint8_t *_Temp);
 void Read_netmask(uint8_t *_Temp);
 void Read_gateway(uint8_t *_Temp);
+void Read_hostname(uint8_t *_Temp);
+uint8_t Read_hostnameLeng(void);
+
+
 //void Write_SetIPFlag(uint8_t *_Temp);
 //uint8_t Read_SetIPFlag(void);	//g_SetIPFlag
 

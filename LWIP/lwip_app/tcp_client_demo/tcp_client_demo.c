@@ -4,7 +4,6 @@
 #include "lwip/lwip_sys.h"
 #include "lwip/api.h"
 #include "includes.h"
-#include "key.h"
 #include "bsp_powerbus.h"
 #include "bsp_useadd.h"
 #include "led.h"
@@ -12,6 +11,8 @@
 #include "bsp_serialport.h"
 #include "malloc.h"
 
+#include "lwip/sockets.h"
+#include "lwip/netdb.h"
  
 struct netconn *tcp_clientconn;					//TCP CLIENT网络连接结构体
 u8 tcp_client_recvbuf[TCP_CLIENT_RX_BUFSIZE];	//TCP客户端接收数据缓冲区
@@ -32,6 +33,7 @@ extern uint8_t g_ACUAdd[16];	//通信码16位
 extern OS_EVENT * q_msg;			//消息队列
 extern OS_EVENT * q_msg_ser;		//消息队列 服务器回复数据
 
+struct hostent* hip = NULL;
 
 //TCP客户端任务
 #define TCPCLIENT_PRIO		8
@@ -52,6 +54,7 @@ static void tcp_client_thread(void *arg)
 	static u16_t 		 server_port,loca_port;
     uint8_t i_SendCount=0;	//i_SendCount心跳数据包发送计数
 	uint8_t SendRecvCount=0;	//发送加1，接收减1，当该值大于10次(10次发送未收到回复)时，断开TCP链接重连
+	u8_t *host_memory; 
 
 	u8 *p;
 	u8 p_err;
@@ -61,7 +64,37 @@ static void tcp_client_thread(void *arg)
 	ser_Date=mymalloc(SRAMIN,11);	//申请11个字节的内存
 		
 	LWIP_UNUSED_ARG(arg);
-//	server_port = REMOTE_PORT;	//测试使用
+	
+#if LWIP_DNS	//DNS
+	host_memory=mymalloc(SRAMIN,64);	//为memp_memory申请内存
+	if(!host_memory)
+	{
+		myfree(SRAMIN,host_memory);
+		printf("mymalloc Fail!");
+	}
+	Read_hostname((uint8_t *)host_memory);	
+	printf("\r\n host_memory:%s;\r\n",host_memory);
+	while(hip == NULL)
+	{
+		//hip = gethostbyname("1000000.zk1.rsgcw.com");
+		hip = gethostbyname((char *)host_memory);
+		//printf("\r\n hip = gethostbyname((char *)host_memory);\r\n");
+
+		if(hip != NULL)
+		{
+			printf("\r\nIP Address : %s\r\n",inet_ntoa(*((struct in_addr *)hip->h_addr_list[0])));
+			printf("1000000.zk1.rsgcw.com IP Address : %d.%d.%d.%d\r\n",\
+			(struct in_addr *)hip->h_addr_list[0][0],(struct in_addr *)hip->h_addr_list[0][1],\
+			(struct in_addr *)hip->h_addr_list[0][2],(struct in_addr *)hip->h_addr_list[0][3]);			
+		}
+	}
+	lwipdev.remoteip[0] = hip->h_addr_list[0][0];
+	lwipdev.remoteip[1] = hip->h_addr_list[0][1];
+	lwipdev.remoteip[2] = hip->h_addr_list[0][2];
+	lwipdev.remoteip[3] = hip->h_addr_list[0][3];
+#endif
+	
+	//	server_port = REMOTE_PORT;	//测试使用
 	server_port = g_lwipPort;	//远端端口号
 	IP4_ADDR(&server_ipaddr, lwipdev.remoteip[0],lwipdev.remoteip[1], lwipdev.remoteip[2],lwipdev.remoteip[3]);
 
@@ -104,7 +137,7 @@ static void tcp_client_thread(void *arg)
 					{
 						i_SendCount = 1;
 					}
-					printf("\r\n心跳包：%2d\r\n",i_SendCount);
+					printf("\r\ng_RUNDate[0][0]=%2d；心跳包：g_RUNDate[%2d][0] = %02X；\r\n",g_RUNDate[0][0],i_SendCount,g_RUNDate[i_SendCount][0]);
 					if((g_RUNDate[i_SendCount][0]&0xC0) != 0x00)	//卡机存在 发送心跳包
 					{
 						if(SendRecvCount<200)	SendRecvCount++;
@@ -222,7 +255,7 @@ static void tcp_client_thread(void *arg)
 							{
 //								g_CostNum = tcp_client_recvbuf[10];	//流量计脉冲数 每升水计量周期
 //								g_WaterCost = tcp_client_recvbuf[9];//WaterCost=水费 最小扣款金额 0.005元
-								printf("心跳包服务器回复 卡号：%02X%02X%02X%02X,逻辑地址%02X \r\n",tcp_client_recvbuf[5],tcp_client_recvbuf[6],tcp_client_recvbuf[7],tcp_client_recvbuf[8],_ucNo);
+								printf("心跳包服务器回复 卡机SN：%02X%02X%02X%02X,逻辑地址%02X \r\n",tcp_client_recvbuf[5],tcp_client_recvbuf[6],tcp_client_recvbuf[7],tcp_client_recvbuf[8],_ucNo);
 								ser_Date[0] = 0xCC;	//标志心跳包
 								ser_Date[1] = tcp_client_recvbuf[5];	//卡机SN 1
 								ser_Date[2] = tcp_client_recvbuf[6];	//卡机SN 2

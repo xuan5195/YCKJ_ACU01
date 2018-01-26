@@ -1,6 +1,9 @@
+//更新说明：
+//2018.01.25 增加域名功能
+//2018.01.26 修复g_RUNDate[0][0],使用问题，造成单台卡机时不能正常与服务器通信问题
+
 #include "led.h"
 #include "delay.h"
-#include "key.h"
 #include "sys.h"
 #include "wdg.h"
 #include "bsp_24cxx.h"
@@ -89,7 +92,8 @@ void * MsgGrp[MsgGrp_SIZE];			//消息队列存储地址,最大支持100个消息
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);
 	bsp_InitUart(); 	/* 初始化串口 */
  	LED_Init();			    //LED端口初始化
-	CAN_Mode_Init(CAN_SJW_1tq,CAN_BS1_8tq,CAN_BS2_7tq,18,CAN_Mode_Normal);//CAN初始化正常模式,波特率450Kbps 
+	CAN_Mode_Init(CAN_SJW_1tq,CAN_BS1_13tq,CAN_BS2_2tq,25,CAN_Mode_Normal);//CAN初始化正常模式,波特率90Kbps    
+	//CAN_Mode_Init(CAN_SJW_1tq,CAN_BS1_8tq,CAN_BS2_7tq,18,CAN_Mode_Normal);//CAN初始化正常模式,波特率90Kbps    
 
 	//usmart_dev.init(72);	//初始化USMART		 
  	//FSMC_SRAM_Init();		//初始化外部SRAM
@@ -174,19 +178,21 @@ void key_task(void *pdata)
 					{
 						tcp_client_flag |= LWIP_SEND_HeartbeatDATA; //标记LWIP有心跳数据包要发送;
 						PrintfCount++;
-						//printf("\r\n 快递心跳包发送状态,发送次数%2d,计数值：%d.",PrintfCount,HeartSendCount); 
 					}
 				}
 				else
 				{
 					HeartSendCount = 5000;
-					if(g_RUNDate[0][0] > 0)
+					if(g_RUNDate[0][0] > 5)
 					{
 						if((Key_Task_Count%(6000/g_RUNDate[0][0]))==1)  //5min内发送卡机全部 6000/58 = 103 103*50ms
 						tcp_client_flag |= LWIP_SEND_HeartbeatDATA; //标记LWIP有心跳数据包要发送;				
 					}
-//					if((Key_Task_Count%200)==1)  //10秒钟发一次；
-//					tcp_client_flag |= LWIP_SEND_HeartbeatDATA; //标记LWIP有心跳数据包要发送;				
+					else if(g_RUNDate[0][0] > 0)
+					{
+						if((Key_Task_Count%(6000/5))==1)  //5min内发送卡机全部 6000/5 = 1200 1200*50ms=60s
+						tcp_client_flag |= LWIP_SEND_HeartbeatDATA; //标记LWIP有心跳数据包要发送;				
+					}
 				}
 				OSTimeDlyHMSM(0,0,0,45);  //延时50ms						
 			}
@@ -237,7 +243,7 @@ void led_task(void *pdata)
 	uint8_t PhysicalADD[4] = {0x00,0x00,0x00,0x00};
     uint8_t u8Temp; //存储临时数据
 	uint8_t Led_TaskCount = 0;
-    uint8_t ucCount = 100;	//上电100次
+    uint8_t ucCount = 150;	//上电150次
 	uint8_t CycleCount =0;
 	uint32_t BroadTime=0;
 	uint8_t i;
@@ -272,13 +278,13 @@ void led_task(void *pdata)
     while(ucCount)
     {		
         LED0 = !LED0;LED1 = !LED1;LED2 = !LED2;
-        printf("%02d. ",ucCount); 
+        printf("%03d. ",ucCount); 
 		if(Can_ReadUnregistered((uint8_t *)PhysicalADD)!=0x00)  //有数据
 		{
             printf("物理：%02X%02X%02X%02X;",PhysicalADD[0],PhysicalADD[1],PhysicalADD[2],PhysicalADD[3]);   
             u8Temp = Distribute_LogicADD((uint8_t *)PhysicalADD);	//分配物理地址
-            printf("逻辑:%0d;",u8Temp); 
-            if( u8Temp <= ( BUSNUM_SIZE+1 ) )
+            printf("逻辑:%02d;",u8Temp); 
+            if(( u8Temp <= ( BUSNUM_SIZE+1 ) )&&(u8Temp>0))
 			{
 				KJ_Versions[u8Temp] = Can_WriteLogitADD(u8Temp,(uint8_t *)PhysicalADD);
 				KJ_NonResponse[u8Temp]=0;
@@ -302,7 +308,7 @@ void led_task(void *pdata)
 	OSTimeDlyHMSM(0,0,0,200);  		
 	Can_SendBroadcast_Key((uint8_t *)FM1702_Key);
 	g_PowerUpFlag = 0xAA;	//初始化完成
-    printf("\r\n上电检测未注册超时，进入正常待机状态;\r\n"); 
+    printf("\r\n上电检测未注册超时，进入正常待机状态;总线：%2d.\r\n",g_RUNDate[0][0]); 
 	IWDG_Init(6,1024);    //与分频数为64,重载值为1024,溢出时间为6s	   
 	while(1)
 	{
@@ -317,7 +323,6 @@ void led_task(void *pdata)
 			}
 			OSTimeDlyHMSM(0,0,0,100);  //延时100ms
 			SendSerialAsk(0xE0);	//在线升级完成回复给UART3 USB转串口上
-//			Send_IAPDate0(0xFC);	//让卡机跳转并运行
 			g_IAPFlag = 0;
 		}
 		else if(g_IAPFlag==0xD1)	//擦除FLash
@@ -373,28 +378,28 @@ void led_task(void *pdata)
 			{   //2.轮循方式取数据
 				ReadRunningData(Led_TaskCount+1);			
 
-				if((g_RUNDate[Led_TaskCount][0]&0x03) != 0x00)	//有数据
+				if((g_RUNDate[Led_TaskCount+1][0]&0x03) != 0x00)	//有数据
 				{
 					g_SendDate[0] = 0xAA;	//标志为使用
-					if((g_RUNDate[Led_TaskCount][0]&0x03) == 0x01)		g_SendDate[1] = 0x11;	//插卡
-					else if((g_RUNDate[Led_TaskCount][0]&0x03) == 0x02)g_SendDate[1] = 0x13;	//拔卡
-					g_SendDate[2] = g_RUNDate[Led_TaskCount][1];	//卡机SN
-					g_SendDate[3] = g_RUNDate[Led_TaskCount][2];	//卡机SN
-					g_SendDate[4] = g_RUNDate[Led_TaskCount][3];	//卡机SN
-					g_SendDate[5] = g_RUNDate[Led_TaskCount][4];	//卡机SN
-					g_SendDate[6] = g_RUNDate[Led_TaskCount][5];	//CardSN
-					g_SendDate[7] = g_RUNDate[Led_TaskCount][6];	//CardSN
-					g_SendDate[8] = g_RUNDate[Led_TaskCount][7];	//CardSN
-					g_SendDate[9] = g_RUNDate[Led_TaskCount][8];	//CardSN
-					g_SendDate[10] = g_RUNDate[Led_TaskCount][9];	//Card金额1
-					g_SendDate[11] = g_RUNDate[Led_TaskCount][10];	//Card金额2	
-					g_SendDate[12] = g_RUNDate[Led_TaskCount][11];	//Card金额3		
-					g_SendDate[13] = g_RUNDate[Led_TaskCount][12];	//校验	
-					g_SendDate[14] = Led_TaskCount;//逻辑地址	
-					g_SendDate[15] = g_RUNDate[Led_TaskCount][13];//通信码
+					if((g_RUNDate[Led_TaskCount+1][0]&0x03) == 0x01)		g_SendDate[1] = 0x11;	//插卡
+					else if((g_RUNDate[Led_TaskCount+1][0]&0x03) == 0x02)	g_SendDate[1] = 0x13;	//拔卡
+					g_SendDate[2] = g_RUNDate[Led_TaskCount+1][1];	//卡机SN
+					g_SendDate[3] = g_RUNDate[Led_TaskCount+1][2];	//卡机SN
+					g_SendDate[4] = g_RUNDate[Led_TaskCount+1][3];	//卡机SN
+					g_SendDate[5] = g_RUNDate[Led_TaskCount+1][4];	//卡机SN
+					g_SendDate[6] = g_RUNDate[Led_TaskCount+1][5];	//CardSN
+					g_SendDate[7] = g_RUNDate[Led_TaskCount+1][6];	//CardSN
+					g_SendDate[8] = g_RUNDate[Led_TaskCount+1][7];	//CardSN
+					g_SendDate[9] = g_RUNDate[Led_TaskCount+1][8];	//CardSN
+					g_SendDate[10] = g_RUNDate[Led_TaskCount+1][9];	//Card金额1
+					g_SendDate[11] = g_RUNDate[Led_TaskCount+1][10];	//Card金额2	
+					g_SendDate[12] = g_RUNDate[Led_TaskCount+1][11];	//Card金额3		
+					g_SendDate[13] = g_RUNDate[Led_TaskCount+1][12];	//校验	
+					g_SendDate[14] = Led_TaskCount+1;//逻辑地址	
+					g_SendDate[15] = g_RUNDate[Led_TaskCount+1][13];//通信码
 					q_err=OSQPost(q_msg,g_SendDate);	//发送队列
 					if(q_err!=OS_ERR_NONE) 	myfree(SRAMIN,g_SendDate);	//发送失败,释放内存
-					g_RUNDate[Led_TaskCount][0] = g_RUNDate[Led_TaskCount][0]&(~0x03);	//发送完成，清数据标志位					
+					g_RUNDate[Led_TaskCount+1][0] = g_RUNDate[Led_TaskCount+1][0]&(~0x03);	//发送完成，清数据标志位					
 				}
 
 			}

@@ -22,9 +22,11 @@ extern uint8_t g_Setip[5];       	//本机IP地址
 extern uint8_t g_Setnetmask[4]; 	//子网掩码
 extern uint8_t g_Setgateway[4]; 	//默认网关的IP地址
 extern uint8_t g_SPI_Flash_Show,g_IAPFlag;			//用于测试使用
+uint8_t _hostname[60]={0};	//域名
 
 void SendSerialPort(uint8_t *SerialDat)
 {
+	uint8_t _hostnameLeng=0;
 	uint8_t Runningbuf[20]={0x00};
 	uint8_t Sendbuf[20]={0x00};
 	uint8_t RFID_Key[7]={0x00};
@@ -41,13 +43,44 @@ void SendSerialPort(uint8_t *SerialDat)
 	switch(SerialDat[2])
 	{
 		case 0x01:	//通信检测
-			Runningbuf[3] = VersionNo;	//数据域
-			Runningbuf[4] = g_ACUSN[0];	//数据域 区域控制器SN
-			Runningbuf[5] = g_ACUSN[1];	//数据域 区域控制器SN
-			Runningbuf[6] = g_ACUSN[2];	//数据域 区域控制器SN
-			Runningbuf[7] = g_ACUSN[3];	//数据域 区域控制器SN
+			if(SerialDat[1]==0x09)
+			{
+				Runningbuf[3] = VersionNo;	//数据域
+				Runningbuf[4] = g_ACUSN[0];	//数据域 区域控制器SN
+				Runningbuf[5] = g_ACUSN[1];	//数据域 区域控制器SN
+				Runningbuf[6] = g_ACUSN[2];	//数据域 区域控制器SN
+				Runningbuf[7] = g_ACUSN[3];	//数据域 区域控制器SN
+				printf("通信检测%02X.%02X.%02X.%02X;\r\n",Runningbuf[4],Runningbuf[5],Runningbuf[6],Runningbuf[7]);
+			}
+			else if(SerialDat[1]==0x0A)
+			{
+				Runningbuf[1] = SerialDat[1]+1;	//长度
+				Runningbuf[3] = VersionNo;	//数据域
+				Runningbuf[4] = g_ACUSN[0];	//数据域 区域控制器SN
+				Runningbuf[5] = g_ACUSN[1];	//数据域 区域控制器SN
+				Runningbuf[6] = g_ACUSN[2];	//数据域 区域控制器SN
+				Runningbuf[7] = g_ACUSN[3];	//数据域 区域控制器SN
+				Runningbuf[8] = 0xAA;		//数据域 使用域名标记
+				printf("通信检测%02X.%02X.%02X.%02X;域名标记：%02X;\r\n",Runningbuf[4],Runningbuf[5],Runningbuf[6],Runningbuf[7],Runningbuf[8]);
+			}
 			break;
 		case 0x03:	//IP地址和端口号
+		#if LWIP_DNS	//DNS
+			if(SerialDat[1]==0x06)
+			{
+				Runningbuf[1] = 0x06;			//帧长度 
+				Runningbuf[3] = SerialDat[3];	//数据域
+				Runningbuf[4] = SerialDat[4];	//数据域
+				//Write_PortAdd((Runningbuf[3]<<8)|Runningbuf[4]);	//端口号		
+			}
+			else
+			{
+				Runningbuf[1] = 0x06;	//帧长度 
+				Runningbuf[3] = 0x00;	//数据域
+				Runningbuf[4] = 0x00;	//数据域
+			}
+			printf("端口号%02X.%02X;\r\n",Runningbuf[3],Runningbuf[4]);
+		#else
 			Runningbuf[3] = SerialDat[3];	//数据域
 			Runningbuf[4] = SerialDat[4];	//数据域
 			Runningbuf[5] = SerialDat[5];	//数据域
@@ -60,8 +93,14 @@ void SendSerialPort(uint8_t *SerialDat)
 			Sendbuf[3] = Runningbuf[6];			
 			Write_IPAdd((uint8_t *)Sendbuf);		//IP地址
 			Write_PortAdd((Runningbuf[7]<<8)|Runningbuf[8]);	//端口号		
+		#endif
 			break;
 		case 0xC3:	//查询  IP地址和端口号
+		#if LWIP_DNS	//DNS
+			_lwipPort = Read_PortAdd();				//printf("端口号------------%5d\r\n",_lwipPort);
+			Runningbuf[3] = _lwipPort/256;	//数据域
+			Runningbuf[4] = _lwipPort%256;	//数据域
+		#else
 			Read_IPAdd((uint8_t *)_lwipADD);		//printf("IP地址------------%d.%d.%d.%d\r\n",g_lwipADD[0],g_lwipADD[1],g_lwipADD[2],g_lwipADD[3]);
 			_lwipPort = Read_PortAdd();				//printf("端口号------------%5d\r\n",g_lwipPort);
 			Runningbuf[3] = _lwipADD[0];	//数据域
@@ -70,6 +109,7 @@ void SendSerialPort(uint8_t *SerialDat)
 			Runningbuf[6] = _lwipADD[3];	//数据域
 			Runningbuf[7] = _lwipPort/256;	//数据域
 			Runningbuf[8] = _lwipPort%256;	//数据域
+		#endif
 			break;
 		case 0x05:	//通讯码
 			for(i=0;i<16;i++)
@@ -149,6 +189,59 @@ void SendSerialPort(uint8_t *SerialDat)
 			Runningbuf[9] = SerialDat[9];	//数据域 A密码 0x60
 			Runningbuf[10] = RFID_Key[6];	//数据域 块地址
 			break;	
+		case 0x21:	//设置域名1
+			Clear_hostname();
+			printf("\r\nSerialDat: ");
+			for(i=0;i<(SerialDat[1]-4);i++)
+			{
+				_hostname[i] = SerialDat[3+i];
+				Runningbuf[3+i] = _hostname[i];
+//				printf("0x%02X ",SerialDat[3+i]);
+			}
+//	printf("\r\n _hostname \r\n");
+//	for(i=0;i<(_hostname[0]+1);i++)	printf("0x%02X ",_hostname[i]);
+//	printf("\r\n");
+//	printf("_hostname:%s \r\n",_hostname);
+			if(_hostname[0]<=27)	Write_hostname((uint8_t *)_hostname);
+			Runningbuf[1] = SerialDat[1];	//长度
+			Runningbuf[2] = SerialDat[2];	//命令帧
+			break;	
+		case 0x22:	//设置域名2
+			for(i=0;i<(SerialDat[1]-5);i++)
+			{
+				_hostname[i+28] = SerialDat[4+i];
+				Runningbuf[4+i] = _hostname[i+28];
+			}
+			Runningbuf[1] = SerialDat[1];	//长度
+			Runningbuf[2] = SerialDat[2];	//命令帧
+			Runningbuf[3] = SerialDat[3];	//域名总长度
+			Write_hostname((uint8_t *)_hostname);
+			break;	
+		case 0x23:	//设置域名3
+			break;	
+		case 0x31:	//查询域名1
+			_hostnameLeng = Read_hostnameLeng();
+			Read_hostname((uint8_t *)_hostname);	printf("\r\ng_hostname:%s;\r\n",_hostname);
+			if( _hostnameLeng > 28 )
+			{
+				Runningbuf[1] = 27+5;	//域名总长度
+				for(i=0;i<28;i++)	Runningbuf[3+i] = _hostname[i];
+			}
+			else
+			{
+				Runningbuf[1] = _hostnameLeng+5;	//域名总长度
+				for(i=0;i<_hostnameLeng;i++) 	Runningbuf[3+i] = _hostname[i];
+			}
+			Runningbuf[2] = SerialDat[2];	//命令帧
+			break;	
+		case 0x32:	//查询域名2
+			_hostnameLeng = Read_hostnameLeng();
+			Runningbuf[1] = _hostnameLeng-27+4;	//长度
+			Runningbuf[2] = SerialDat[2];		//命令帧
+			for(i=0;i<(_hostnameLeng-27);i++)	Runningbuf[3+i] = _hostname[i+28];
+			break;	
+ 		case 0x33:	//查询域名3
+			break;	
 		case 0xD0:	//IAP升级中
 			//g_SPI_Flash_Show = 0xAA;
 			g_IAPFlag = 0xD0;
@@ -183,8 +276,11 @@ void SendSerialPort(uint8_t *SerialDat)
 		default:
         	break;
 	}
-	Runningbuf[SerialDat[1]-1] = CRC8_Table(Runningbuf,Runningbuf[1]-1);	//CRC校验位
-	comSendBuf(SERIALPORT_COM, (uint8_t *)Runningbuf, Runningbuf[1]);
+	if(SerialDat[2]<=0xCF)
+	{
+		Runningbuf[SerialDat[1]-1] = CRC8_Table(Runningbuf,Runningbuf[1]-1);	//CRC校验位
+		comSendBuf(SERIALPORT_COM, (uint8_t *)Runningbuf, Runningbuf[1]);
+	}
 }
 
 void ReceivePacketDat(uint8_t *SerialDat)

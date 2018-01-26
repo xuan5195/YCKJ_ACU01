@@ -192,6 +192,7 @@ u8 AT24CXX_Check(void)
 	uint8_t IPAdd_Temp[4]={123,57,150,25};	//服务器IP
 	uint16_t PortAdd_Temp=20000;	//端口号
 	uint8_t ACUAdd_Temp[16]={0x31,0x30,0x30,0x30,0x30,0x30,0x30,0x2D,0x62,0x37,0x36,0x31,0x63,0x32,0x62,0x30};	//区域控制器SN
+	uint8_t  url_Temp[64]={0};
 
 	Read_RFID_Key((uint8_t *)FM1702_Key);	printf("RFID_Key:%02X%02X%02X%02X%02X%02X.绝对块号:%d\r\n",FM1702_Key[0],FM1702_Key[1],FM1702_Key[2],FM1702_Key[3],FM1702_Key[4],FM1702_Key[5],FM1702_Key[6]);
 	Read_IPAdd((uint8_t *)g_lwipADD);		printf("IP地址------------%d.%d.%d.%d\r\n",g_lwipADD[0],g_lwipADD[1],g_lwipADD[2],g_lwipADD[3]);
@@ -200,6 +201,8 @@ u8 AT24CXX_Check(void)
 	Read_ACUAdd((uint8_t *)g_ACUAdd);		printf("区域控制器通信码--");	
 	printf("%2X%2X%2X%2X%2X%2X%2X%2X",		g_ACUAdd[0],g_ACUAdd[1],g_ACUAdd[2],g_ACUAdd[3],g_ACUAdd[4],g_ACUAdd[5],g_ACUAdd[6],g_ACUAdd[7]);
 	printf("%2X%2X%2X%2X%2X%2X%2X%2X\r\n",	g_ACUAdd[8],g_ACUAdd[9],g_ACUAdd[10],g_ACUAdd[11],g_ACUAdd[12],g_ACUAdd[13],g_ACUAdd[14],g_ACUAdd[15]);
+
+	Read_hostname((uint8_t *)url_Temp);	printf("\r\nRead_hostname: %s;\r\n",url_Temp);
 
 	Read_localIP((uint8_t *)g_Setip);	//静态IP标志 0xAA为静态IP
 	if(g_Setip[0]==0xAA)	

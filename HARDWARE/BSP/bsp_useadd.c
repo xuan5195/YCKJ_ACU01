@@ -291,6 +291,23 @@ void Write_gateway(uint8_t *_Temp)	//默认网关:192.168.1.1
 	AT24CXX_WriteOneByte( Temp+2, _Temp[2] );            
 	AT24CXX_WriteOneByte( Temp+3, _Temp[3] );            
 }
+void Write_hostname(uint8_t *_Temp)
+{
+	uint8_t i;
+	for(i=0;i<(_Temp[0]+1);i++)
+	{
+		AT24CXX_WriteOneByte( 800+i, _Temp[i] );	//域名
+	}
+}
+void Clear_hostname(void)
+{
+	uint8_t i;
+	for(i=0;i<64;i++)
+	{
+		AT24CXX_WriteOneByte( 800+i, 0x00 );	//域名
+	}
+}
+
 void Read_localIP(uint8_t *_Temp)
 {
 	AT24CXX_Read( 939,(uint8_t *)_Temp, 0x05 );	//读取本机IP地址
@@ -302,5 +319,28 @@ void Read_netmask(uint8_t *_Temp)
 void Read_gateway(uint8_t *_Temp)
 {
 	AT24CXX_Read( 948,(uint8_t *)_Temp, 0x04 );	//默认网关
+}
+void Read_hostname(uint8_t *_Temp)
+{
+	uint8_t _length=0,i;
+	uint8_t _Buffer[]="1000000.zk1.rsgcw.com";
+	_length = Read_hostnameLeng();					//获取长度
+	//printf("_length=%2X;%2X",_length,strlen((char *)_Buffer));
+	printf("_length:%2d ;",_length);
+	if((_length!=0)&&(_length<=64))	
+	{
+		AT24CXX_Read( 801,(uint8_t *)_Temp, _length+1 );	//域名
+	}
+	else
+	{
+		for(i=0;i<21;i++)	_Temp[i]=_Buffer[i];
+		Clear_hostname();
+//		Write_hostname();
+	}
+}
+
+uint8_t Read_hostnameLeng(void)
+{
+	return (AT24CXX_ReadOneByte(800));					//获取长度
 }
 

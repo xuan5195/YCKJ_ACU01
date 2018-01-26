@@ -59,6 +59,9 @@
 #define LWIP_DEBUG                    	0	 						//关闭DEBUG选项
 #define ICMP_DEBUG                     	LWIP_DBG_OFF 				//开启/关闭ICMPdebug
 
+#define LWIP_DNS                        1
+
+
 #endif /* __LWIPOPTS_H__ */
 
 
