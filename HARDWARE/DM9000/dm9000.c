@@ -8,6 +8,7 @@ struct dm9000_config dm9000cfg;				//DM9000配置结构体
 
 extern OS_EVENT* dm9000input;				//DM9000接收数据信号量
 extern OS_EVENT* dm9000lock;				//DM9000读写互锁控制信号量
+extern uint8_t g_ACUSN[4];					//区域控制器SN 4位
 
 //初始化DM9000
 //返回值:
@@ -102,7 +103,7 @@ u8 DM9000_Init(void)
 	FSMC_NORSRAMInitStructure.FSMC_WriteTimingStruct = &ReadWriteTiming;
 	FSMC_NORSRAMInit(&FSMC_NORSRAMInitStructure);
 	FSMC_NORSRAMCmd(FSMC_Bank1_NORSRAM2,ENABLE); //使能FSMC的Bank1_Bank1_NORSRAM2
-	
+
 	temp=*(vu32*)(0x1FFFF7E8);				//获取STM32的唯一ID的前24位作为MAC地址后三字节
 	dm9000cfg.mode=DM9000_AUTO;	
  	dm9000cfg.queue_packet_len=0;
@@ -111,10 +112,10 @@ u8 DM9000_Init(void)
 	//初始化MAC地址
 	dm9000cfg.mac_addr[0]=2;
 	dm9000cfg.mac_addr[1]=0;
-	dm9000cfg.mac_addr[2]=(temp>>24)&0xFF;	//低四字节用STM32的唯一ID
-	dm9000cfg.mac_addr[3]=(temp>>16)&0xFF;	//低三字节用STM32的唯一ID
-	dm9000cfg.mac_addr[4]=(temp>>8)&0xFF;
-	dm9000cfg.mac_addr[5]=temp&0xFF;
+	dm9000cfg.mac_addr[2]=g_ACUSN[0];	//低四字节用STM32的唯一ID 改为 区域模块SN
+	dm9000cfg.mac_addr[3]=g_ACUSN[1];	
+	dm9000cfg.mac_addr[4]=g_ACUSN[2];
+	dm9000cfg.mac_addr[5]=g_ACUSN[3];
 	//初始化组播地址
 	dm9000cfg.multicase_addr[0]=0Xff;
 	dm9000cfg.multicase_addr[1]=0Xff;

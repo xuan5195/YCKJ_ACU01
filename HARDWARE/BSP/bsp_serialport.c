@@ -65,35 +65,35 @@ void SendSerialPort(uint8_t *SerialDat)
 			}
 			break;
 		case 0x03:	//IP地址和端口号
-		#if LWIP_DNS	//DNS
+//		#if LWIP_DNS	//DNS
 			if(SerialDat[1]==0x06)
 			{
 				Runningbuf[1] = 0x06;			//帧长度 
 				Runningbuf[3] = SerialDat[3];	//数据域
 				Runningbuf[4] = SerialDat[4];	//数据域
-				//Write_PortAdd((Runningbuf[3]<<8)|Runningbuf[4]);	//端口号		
+				Write_PortAdd((Runningbuf[3]<<8)|Runningbuf[4]);	//端口号		
 			}
-			else
-			{
-				Runningbuf[1] = 0x06;	//帧长度 
-				Runningbuf[3] = 0x00;	//数据域
-				Runningbuf[4] = 0x00;	//数据域
-			}
+//			else
+//			{
+//				Runningbuf[1] = 0x06;	//帧长度 
+//				Runningbuf[3] = 0x00;	//数据域
+//				Runningbuf[4] = 0x00;	//数据域
+//			}
 			printf("端口号%02X.%02X;\r\n",Runningbuf[3],Runningbuf[4]);
-		#else
-			Runningbuf[3] = SerialDat[3];	//数据域
-			Runningbuf[4] = SerialDat[4];	//数据域
-			Runningbuf[5] = SerialDat[5];	//数据域
-			Runningbuf[6] = SerialDat[6];	//数据域
-			Runningbuf[7] = SerialDat[7];	//数据域
-			Runningbuf[8] = SerialDat[8];	//数据域
-			Sendbuf[0] = Runningbuf[3];
-			Sendbuf[1] = Runningbuf[4];
-			Sendbuf[2] = Runningbuf[5];
-			Sendbuf[3] = Runningbuf[6];			
-			Write_IPAdd((uint8_t *)Sendbuf);		//IP地址
-			Write_PortAdd((Runningbuf[7]<<8)|Runningbuf[8]);	//端口号		
-		#endif
+//		#else
+//			Runningbuf[3] = SerialDat[3];	//数据域
+//			Runningbuf[4] = SerialDat[4];	//数据域
+//			Runningbuf[5] = SerialDat[5];	//数据域
+//			Runningbuf[6] = SerialDat[6];	//数据域
+//			Runningbuf[7] = SerialDat[7];	//数据域
+//			Runningbuf[8] = SerialDat[8];	//数据域
+//			Sendbuf[0] = Runningbuf[3];
+//			Sendbuf[1] = Runningbuf[4];
+//			Sendbuf[2] = Runningbuf[5];
+//			Sendbuf[3] = Runningbuf[6];			
+//			Write_IPAdd((uint8_t *)Sendbuf);		//IP地址
+//			Write_PortAdd((Runningbuf[7]<<8)|Runningbuf[8]);	//端口号		
+//		#endif
 			break;
 		case 0xC3:	//查询  IP地址和端口号
 		#if LWIP_DNS	//DNS

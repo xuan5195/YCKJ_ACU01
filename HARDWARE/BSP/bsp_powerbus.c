@@ -9,6 +9,7 @@
 //#include "usmart.h"	
 #include "includes.h"
 #include "led.h"
+#include "wdg.h"
 
 #include "bsp_can.h"
 #include "bsp_canapp.h"
@@ -480,6 +481,7 @@ uint8_t Binary_searchSN(void)
 		printf("%02d. ",uTCount);
 		if(Can_ReadUnregistered((uint8_t *)uTempSN)!=0x00)  //有数据 检测一次100ms
 		{
+			IWDG_Feed();	//增加看门狗
 			uDat++;	uTCount = 10;	//读取到数据，重新计时1秒
             printf("物理：%02X%02X%02X%02X;",uTempSN[0],uTempSN[1],uTempSN[2],uTempSN[3]);   
             u8Temp = Distribute_LogicADD((uint8_t *)uTempSN);	//分配物理地址

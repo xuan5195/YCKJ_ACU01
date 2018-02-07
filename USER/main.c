@@ -1,6 +1,8 @@
 //更新说明：
-//2018.01.25 增加域名功能
-//2018.01.26 修复g_RUNDate[0][0],使用问题，造成单台卡机时不能正常与服务器通信问题
+//2018.01.25  V0.1 增加域名功能
+//2018.01.26  V0.1 修复g_RUNDate[0][0],使用问题，造成单台卡机时不能正常与服务器通信问题
+//2018.01.26  V0.1 修复过多卡机未注册时，在查询过程中10秒等待中没有清看门狗造成区域模块复位问题
+//2018.02.07  V0.1 修复串口设置端口号错误问题，MAC地址低四位由ST_UID改为区域模块SN；
 
 #include "led.h"
 #include "delay.h"
@@ -93,7 +95,7 @@ void * MsgGrp[MsgGrp_SIZE];			//消息队列存储地址,最大支持100个消息
 	bsp_InitUart(); 	/* 初始化串口 */
  	LED_Init();			    //LED端口初始化
 	CAN_Mode_Init(CAN_SJW_1tq,CAN_BS1_13tq,CAN_BS2_2tq,25,CAN_Mode_Normal);//CAN初始化正常模式,波特率90Kbps    
-	//CAN_Mode_Init(CAN_SJW_1tq,CAN_BS1_8tq,CAN_BS2_7tq,18,CAN_Mode_Normal);//CAN初始化正常模式,波特率90Kbps    
+	//CAN_Mode_Init(CAN_SJW_1tq,CAN_BS1_8tq,CAN_BS2_7tq,18,CAN_Mode_Normal);//CAN初始化正常模式,波特率125Kbps    
 
 	//usmart_dev.init(72);	//初始化USMART		 
  	//FSMC_SRAM_Init();		//初始化外部SRAM
@@ -185,7 +187,7 @@ void key_task(void *pdata)
 					HeartSendCount = 5000;
 					if(g_RUNDate[0][0] > 5)
 					{
-						if((Key_Task_Count%(6000/g_RUNDate[0][0]))==1)  //5min内发送卡机全部 6000/58 = 103 103*50ms
+						if((Key_Task_Count%(6000/g_RUNDate[0][0]))==1)  //5min内发送卡机全部 6000/n *50ms
 						tcp_client_flag |= LWIP_SEND_HeartbeatDATA; //标记LWIP有心跳数据包要发送;				
 					}
 					else if(g_RUNDate[0][0] > 0)
