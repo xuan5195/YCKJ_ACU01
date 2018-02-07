@@ -187,7 +187,7 @@ u8 AT24CXX_Check(void)
 {
 	u8 temp;
 	uint8_t ucRFID_Key_Temp[7]={0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0x01};	//RFID_Key 初始值
-	uint8_t ACUSN_Temp[4]={0x10,0x18,0x20,0x02};	//区域控制器SN
+	uint8_t ACUSN_Temp[4]={0x10,0x18,0x20,0x14};	//区域控制器SN
 //	uint8_t IPAdd_Temp[4]={39,106,113,254};	//服务器IP
 	uint8_t IPAdd_Temp[4]={123,57,150,25};	//服务器IP
 	uint16_t PortAdd_Temp=20000;	//端口号
