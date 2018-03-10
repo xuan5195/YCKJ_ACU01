@@ -3,6 +3,7 @@
 //2018.01.26  V0.1 修复g_RUNDate[0][0],使用问题，造成单台卡机时不能正常与服务器通信问题
 //2018.01.26  V0.1 修复过多卡机未注册时，在查询过程中10秒等待中没有清看门狗造成区域模块复位问题
 //2018.02.07  V0.1 修复串口设置端口号错误问题，MAC地址低四位由ST_UID改为区域模块SN；
+//2018.02.23  V0.2 修改CAN波特率为60kbps。
 
 #include "led.h"
 #include "delay.h"
@@ -59,6 +60,7 @@ uint8_t g_NewAddFlag=0x00; 	//新增标志
 uint8_t g_SPI_Flash_Show=0;	//用于测试使用
 uint8_t g_IAPFlag = 0x00;	//在线升级标志，0xAA时表示卡机在线升级中。这时不进行卡机通信、TCP通信
 
+uint16_t g_ErrCount=0;		//测试使用全局变量
 
 //KEY任务
 #define KEY_TASK_PRIO 		9		//任务优先级
@@ -94,8 +96,12 @@ void * MsgGrp[MsgGrp_SIZE];			//消息队列存储地址,最大支持100个消息
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);
 	bsp_InitUart(); 	/* 初始化串口 */
  	LED_Init();			    //LED端口初始化
-	CAN_Mode_Init(CAN_SJW_1tq,CAN_BS1_13tq,CAN_BS2_2tq,25,CAN_Mode_Normal);//CAN初始化正常模式,波特率90Kbps    
-	//CAN_Mode_Init(CAN_SJW_1tq,CAN_BS1_8tq,CAN_BS2_7tq,18,CAN_Mode_Normal);//CAN初始化正常模式,波特率125Kbps    
+//	CAN_Mode_Init(CAN_SJW_1tq,CAN_BS1_8tq,CAN_BS2_1tq,90,CAN_Mode_Normal);	//CAN初始化正常模式,波特率40Kbps  //则波特率为:36M/((1+8+1)*90)= 40Kbps CAN_Normal_Init(1,13,1,60,1);   
+//	CAN_Mode_Init(CAN_SJW_2tq,CAN_BS1_16tq,CAN_BS2_2tq,90,CAN_Mode_Normal);	//CAN初始化正常模式,波特率20Kbps  //则波特率为:36M/((2+16+2)*90)= 20Kbps CAN_Normal_Init(2,16,2,90,1);   
+//	CAN_Mode_Init(CAN_SJW_1tq,CAN_BS1_15tq,CAN_BS2_4tq,36,CAN_Mode_Normal);	//CAN初始化正常模式,波特率50Kbps  //则波特率为:36M/((1+15+4)*36)= 50Kbps CAN_Normal_Init(1,15,4,36,1);   
+	CAN_Mode_Init(CAN_SJW_1tq,CAN_BS1_4tq,CAN_BS2_3tq,75,CAN_Mode_Normal);	//CAN初始化正常模式,波特率60Kbps  //则波特率为:36M/((1+2+1)*150)= 60Kbps CAN_Normal_Init(1,2,1,150,1);   
+//	CAN_Mode_Init(CAN_SJW_1tq,CAN_BS1_13tq,CAN_BS2_2tq,25,CAN_Mode_Normal);	//CAN初始化正常模式,波特率90Kbps    
+//	CAN_Mode_Init(CAN_SJW_1tq,CAN_BS1_8tq,CAN_BS2_7tq,18,CAN_Mode_Normal);//CAN初始化正常模式,波特率125Kbps    
 
 	//usmart_dev.init(72);	//初始化USMART		 
  	//FSMC_SRAM_Init();		//初始化外部SRAM
@@ -245,7 +251,7 @@ void led_task(void *pdata)
 	uint8_t PhysicalADD[4] = {0x00,0x00,0x00,0x00};
     uint8_t u8Temp; //存储临时数据
 	uint8_t Led_TaskCount = 0;
-    uint8_t ucCount = 150;	//上电150次
+    uint8_t ucCount = 50;	//上电50次
 	uint8_t CycleCount =0;
 	uint32_t BroadTime=0;
 	uint8_t i;
@@ -283,6 +289,7 @@ void led_task(void *pdata)
         printf("%03d. ",ucCount); 
 		if(Can_ReadUnregistered((uint8_t *)PhysicalADD)!=0x00)  //有数据
 		{
+			ucCount = 30;	//取到数据改为50，连续50次没有数据就退出等待
             printf("物理：%02X%02X%02X%02X;",PhysicalADD[0],PhysicalADD[1],PhysicalADD[2],PhysicalADD[3]);   
             u8Temp = Distribute_LogicADD((uint8_t *)PhysicalADD);	//分配物理地址
             printf("逻辑:%02d;",u8Temp); 
@@ -413,7 +420,8 @@ void led_task(void *pdata)
 			myfree(SRAMIN,p);
 
 			if( Led_TaskCount > (BUSNUM_SIZE+1) )    
-			{   
+			{
+				printf("\r\ng_ErrCount = %d.",g_ErrCount);	
 				printf("\r\n\r\n"); 	Led_TaskCount = 0;  
 				if(CycleCount<100)		CycleCount++;	//约2分钟进入查找一次	
 				else	

@@ -21,6 +21,7 @@ extern uint8_t KJ_NonResponse[BUSNUM_SIZE+1];	//¿¨»úÎŞ»Ø¸´±êÖ¾ µ±ÊıÖµ´óÓÚ20Ê±£¬Ç
 
 extern uint8_t g_CostNum;		//Á÷Á¿¼ÆÂö³åÊı Ã¿ÉıË®¼ÆÁ¿ÖÜÆÚ
 extern uint8_t g_WaterCost;		//WaterCost=Ë®·Ñ ×îĞ¡¿Û¿î½ğ¶î 0.005Ôª
+extern uint16_t g_ErrCount;		//²âÊÔÊ¹ÓÃÈ«¾Ö±äÁ¿
 
 
 //Î´×¢²á¹ã²¥ 
@@ -291,6 +292,7 @@ void ReadRunningData(uint8_t _no)
 			}
 			else if( uDat == 0x00 )	//Ê§Áª
 			{
+				if(g_ErrCount<65535)	g_ErrCount++;
 				g_RUNDate[_no][0] = g_RUNDate[_no][0]|0x20;//Ğ´ÈëÊ§Áª±ê¼Ç
 				if(KJ_NonResponse[_no]<20)
 				{
